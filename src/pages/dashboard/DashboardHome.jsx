@@ -5,6 +5,9 @@ import { menuItems, getTheme } from "../../components/utils/dashboardConfig";
 import ReservationsPage from "./ReservationsPage";
 import RoomsPage from "./RoomsPage";
 import GuestsPage from "./GuestPage";
+import DashboardPage from "./DashboardPage";
+import FinancialPage from "./FinancialPage";
+import ReportsPage from "./ReportsPage";
 
 export default function DashBoardHome() {
   const navigate = useNavigate();
@@ -111,13 +114,19 @@ export default function DashBoardHome() {
 
         <div className="p-4 sm:p-6 lg:p-8">
           <div className={`max-w-7xl mx-auto ${theme.pageText}`}>
-            {activeTab === "reservas" ? (
+            {activeTab === "dashboard" ? (
+              <DashboardPage theme={theme} />
+            ) : activeTab === "reservas" ? (
               <ReservationsPage theme={theme} />
             ) : activeTab === "habitaciones" ? (
-               <RoomsPage theme={theme} />
+              <RoomsPage theme={theme} />
             ) : activeTab === "huespedes" ? (
               <GuestsPage theme={theme} />
-            ) : (   
+            ) : activeTab === "financial" || activeTab === "finanzas" ? (
+              <FinancialPage theme={theme} />
+            ) : activeTab === "reports" || activeTab === "reportes" ? (
+              <ReportsPage theme={theme} />
+            ) : (
               <EmptyContent
                 activeTab={activeTab}
                 menuItems={menuItems}
@@ -130,5 +139,3 @@ export default function DashBoardHome() {
     </div>
   );
 }
-
-
