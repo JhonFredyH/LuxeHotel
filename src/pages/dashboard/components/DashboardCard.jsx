@@ -1,9 +1,18 @@
+import { Check, Clock3, LogIn, LogOut } from 'lucide-react';
+
+const kpiIconMap = {
+  check: Check,
+  clock: Clock3,
+  login: LogIn,
+  logout: LogOut,
+};
 
 const Card = ({ type = 'kpi', data, theme, isDark, statusClass }) => {
-  
   // KPI Card
   if (type === 'kpi') {
     const { title, value, icon, light, dark, iconWrap, iconColor } = data;
+    const Icon = kpiIconMap[icon];
+
     return (
       <article
         className={`rounded-xl p-4 sm:p-5 md:p-6 transition-all hover:scale-[1.01] ${
@@ -20,14 +29,7 @@ const Card = ({ type = 'kpi', data, theme, isDark, statusClass }) => {
             </p>
           </div>
           <div className={`w-10 h-10 rounded-lg ${iconWrap} flex items-center justify-center`}>
-            <svg
-              className={`w-5 h-5 ${iconColor}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              {icon}
-            </svg>
+            {Icon ? <Icon className={`w-5 h-5 ${iconColor}`} strokeWidth={2.2} /> : null}
           </div>
         </div>
       </article>
@@ -36,7 +38,7 @@ const Card = ({ type = 'kpi', data, theme, isDark, statusClass }) => {
 
   // Reservation Card (mobile)
   if (type === 'reservation') {
-    const {guest, initials, room, dates, status, total, action } = data;
+    const { guest, initials, room, dates, status, total, action } = data;
     return (
       <article
         className={`rounded-lg p-4 border ${

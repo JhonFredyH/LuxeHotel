@@ -2,7 +2,9 @@ import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Sidebar, TopBar, EmptyContent } from "./DashboardComponents";
 import { menuItems, getTheme } from "../../components/utils/dashboardConfig";
-import ReservationsPage from './ReservationPage'; 
+import ReservationsPage from "./ReservationsPage";
+import RoomsPage from "./RoomsPage";
+import GuestsPage from "./GuestPage";
 
 export default function DashBoardHome() {
   const navigate = useNavigate();
@@ -14,7 +16,6 @@ export default function DashBoardHome() {
   const profileMenuRef = useRef(null);
   const theme = getTheme(darkMode);
 
-  // Cerrar menús al hacer click fuera
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (
@@ -110,11 +111,13 @@ export default function DashBoardHome() {
 
         <div className="p-4 sm:p-6 lg:p-8">
           <div className={`max-w-7xl mx-auto ${theme.pageText}`}>
-           
-
             {activeTab === "reservas" ? (
               <ReservationsPage theme={theme} />
-            ) : (
+            ) : activeTab === "habitaciones" ? (
+               <RoomsPage theme={theme} />
+            ) : activeTab === "huespedes" ? (
+              <GuestsPage theme={theme} />
+            ) : (   
               <EmptyContent
                 activeTab={activeTab}
                 menuItems={menuItems}
@@ -127,3 +130,5 @@ export default function DashBoardHome() {
     </div>
   );
 }
+
+
