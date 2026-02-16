@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:17
+    container_name: luxehotel_db
+    environment:
+      POSTGRES_USER: luxe_user
+      POSTGRES_PASSWORD: LuxeHotel123
+      POSTGRES_DB: luxeHotel
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U luxe_user -d luxeHotel"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: .
+    container_name: luxehotel_backend
+    ports:
+      - "8000:8000"
+    environment:
+      APP_ENV: development
+      DB_USER: luxe_user
+      DB_PASSWORD: LuxeHotel123
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: luxeHotel
+      SECRET_KEY: 3c5c74e7287ad6751eff138891a339f0dd57d5f68f65aa76bc293bc15f6c076f
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: "30"
+      ADMIN_NAME: Administrador
+      ADMIN_EMAIL: admin@luxehotel.com
+      ADMIN_PASSWORD: admin123
+    depends_on:
+      db:
+        condition: service_healthy
+    command: sh -c "sleep 5 && alembic upgrade head && python scripts/seed_admin.py && uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+    volumes:
+      - .:/app
+
+volumes:
+  postgres_data:
