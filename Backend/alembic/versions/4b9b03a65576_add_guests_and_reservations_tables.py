@@ -1,6 +1,6 @@
 """Add guests and reservations tables
 
-Revision ID: 4b9b03a65576
+Revises: 63f01d56e28e
 Revises: eb44ed6fb1d9
 Create Date: 2026-02-14 22:51:34.163959
 
@@ -13,7 +13,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = '4b9b03a65576'
-down_revision: Union[str, Sequence[str], None] = 'eb44ed6fb1d9'
+down_revision: Union[str, None] = '63f01d56e28e'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -90,8 +90,7 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['reservation_id'], ['reservations.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
-    op.drop_table('room_inventory')
-    # ### end Alembic commands ###
+   
 
 
 def downgrade() -> None:
