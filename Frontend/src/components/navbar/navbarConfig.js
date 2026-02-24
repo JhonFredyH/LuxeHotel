@@ -5,7 +5,7 @@ export const NAV_ITEMS = [
   { id: "rooms", label: "Rooms & Suites", href: "/#rooms" },
   { id: "contact", label: "Contact", href: "/#contact" },
   { id: "footer", label: "About", href: "/#footer" },
-  { id: "dash", label: "Dash", href: "/dash" },
+  
 ];
 
 export const BRAND_CONFIG = {

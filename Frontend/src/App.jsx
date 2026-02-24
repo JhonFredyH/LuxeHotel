@@ -13,9 +13,14 @@ import authService from "./services/authService";
 import GuestDashboard from "./pages/GuestDashboard";
 
 // Componente para proteger rutas
-const PrivateRoute = ({ children }) => {
+const PrivateRoute = ({ children, requiredRole }) => {
   const isAuthenticated = authService.isAuthenticated();
-  return isAuthenticated ? children : <Navigate to="/login" />;
+  const role = authService.getRole();
+
+  if (!isAuthenticated) return <Navigate to="/login" />;
+  if (requiredRole && role !== requiredRole) return <Navigate to="/login" />;
+
+  return children;
 };
 
 const App = () => {
@@ -39,8 +44,8 @@ const App = () => {
           <Route
             path="/dashboard"
             element={
-              <PrivateRoute>
-                <GuestDashboard /> 
+              <PrivateRoute requiredRole="guest">
+                <GuestDashboard />
               </PrivateRoute>
             }
           />
@@ -48,15 +53,12 @@ const App = () => {
           <Route
             path="/admin/dashboard"
             element={
-              <PrivateRoute>
+              <PrivateRoute requiredRole="admin">
                 <DashBoard />
               </PrivateRoute>
             }
           />
-
           
-
-          {/* Ruta antigua /dash redirige a /dashboard */}
           <Route path="/dash" element={<Navigate to="/dashboard" />} />
         </Route>
       </Routes>

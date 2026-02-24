@@ -1,61 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Users, UserPlus, UserCheck, UserX } from "lucide-react";
 import GuestModal from "./modal/GuestModal";
 import GuestDetailModal from "./modal/GuestDetailModal";
 
-// Datos de ejemplo
-const guestData = [
-  {
-    id: 1,
-    firstName: "María",
-    lastName: "García",
-    email: "maria.garcia@email.com",
-    phone: "+57 300 123 4567",
-    document: "1234567890",
-    documentType: "ID",
-    address: "Calle 123 #45-67",
-    city: "Bogotá",
-    country: "Colombia",
-    dateOfBirth: "1985-03-15",
-    totalStays: 5,
-    lastVisit: "Jan 15, 2024",
-    status: "Active",
-    notes: "VIP guest, prefers room with ocean view"
-  },
-  {
-    id: 2,
-    firstName: "Juan",
-    lastName: "Pérez",
-    email: "juan.perez@email.com",
-    phone: "+57 301 234 5678",
-    document: "9876543210",
-    documentType: "Passport",
-    address: "Carrera 7 #12-34",
-    city: "Medellín",
-    country: "Colombia",
-    dateOfBirth: "1990-07-22",
-    totalStays: 3,
-    lastVisit: "Dec 20, 2023",
-    status: "Active",
-    notes: "Business traveler, needs early check-in"
-  },
-  {
-    id: 3,
-    firstName: "Ana",
-    lastName: "Martínez",
-    email: "ana.martinez@email.com",
-    phone: "+57 302 345 6789",
-    document: "5555555555",
-    documentType: "ID",
-    city: "Cali",
-    country: "Colombia",
-    dateOfBirth: "1988-11-10",
-    totalStays: 1,
-    lastVisit: "Nov 5, 2023",
-    status: "Inactive",
-    notes: ""
-  },
-];
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const kpiCards = [
   {
@@ -93,31 +41,40 @@ const kpiCards = [
     dark: "bg-gradient-to-br from-amber-500/20 to-amber-600/10 border border-amber-500/30",
     iconWrap: "bg-amber-500/20",
     iconColor: "text-amber-600",
-  }
+  },
 ];
 
 const GuestsPage = ({ theme }) => {
   const [guestModalOpen, setGuestModalOpen] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedGuest, setSelectedGuest] = useState(null);
-  const [guests, setGuests] = useState(guestData);
+  const [guests, setGuests] = useState([]);
+  const [loadingGuests, setLoadingGuests] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
 
   const isDark = theme.pageText.includes("text-white");
 
-  const statusClass = (status) => {
-    if (status === "Active") {
-      return isDark
-        ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-        : "bg-emerald-100 text-emerald-700 border border-emerald-200";
-    }
-    return isDark
-      ? "bg-slate-500/20 text-slate-300 border border-slate-500/30"
-      : "bg-slate-100 text-slate-700 border border-slate-200";
-  };
+  // ── Cargar guests desde la API ──────────────────────────
+  useEffect(() => {
+    const fetchGuests = async () => {
+      setLoadingGuests(true);
+      setFetchError(null);
+      try {
+        const res = await fetch(`${API_URL}/guests`);
+        if (!res.ok) throw new Error(`Error ${res.status}`);
+        const data = await res.json();
+        // El endpoint devuelve { data: [...], total, page, limit }
+        setGuests(data.data ?? data);
+      } catch (err) {
+        setFetchError(err.message);
+      } finally {
+        setLoadingGuests(false);
+      }
+    };
+    fetchGuests();
+  }, []);
 
-  // ============================================
-  // HANDLERS
-  // ============================================
+  // ── Handlers ────────────────────────────────────────────
   const handleCreateGuest = () => {
     setSelectedGuest(null);
     setGuestModalOpen(true);
@@ -134,31 +91,36 @@ const GuestsPage = ({ theme }) => {
     setGuestModalOpen(true);
   };
 
-  const handleSubmitGuest = (formData) => {
+  // Recibe el guest guardado que devuelve el backend
+  const handleSubmitGuest = (savedGuest) => {
     if (selectedGuest) {
-      // Update existing guest
-      console.log("Update guest:", formData);
-      setGuests(prev => 
-        prev.map(g => g.id === selectedGuest.id ? { ...g, ...formData } : g)
+      // Actualizar en la lista
+      setGuests((prev) =>
+        prev.map((g) => (g.id === savedGuest.id ? savedGuest : g))
       );
     } else {
-      // Create new guest
-      console.log("Create guest:", formData);
-      const newGuest = {
-        ...formData,
-        id: Date.now(),
-        totalStays: 0,
-        lastVisit: 'Never',
-        status: 'Active'
-      };
-      setGuests(prev => [newGuest, ...prev]);
+      // Agregar al inicio de la lista
+      setGuests((prev) => [savedGuest, ...prev]);
     }
   };
 
-  const handleDeleteGuest = (guestId) => {
-    console.log("Delete guest:", guestId);
-    setGuests(prev => prev.filter(g => g.id !== guestId));
-  };
+  const handleDeleteGuest = async (guestId) => {
+  try {
+    const res = await fetch(`${API_URL}/guests/${guestId}`, {
+      method: "DELETE",
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert(data.detail || `Error ${res.status} al eliminar el guest`);
+      return;
+    }
+
+    setGuests((prev) => prev.filter((g) => g.id !== guestId));
+  } catch {
+    alert("Error de conexión al eliminar el guest");
+  }
+};
 
   return (
     <section className={`max-w-7xl mx-auto ${theme.pageText}`}>
@@ -223,127 +185,134 @@ const GuestsPage = ({ theme }) => {
           </h2>
         </div>
 
+        {/* Loading */}
+        {loadingGuests && (
+          <div className="flex items-center justify-center py-16">
+            <svg className="animate-spin h-6 w-6 text-blue-500" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+            </svg>
+            <span className={`ml-3 text-sm ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+              Loading guests...
+            </span>
+          </div>
+        )}
+
+        {/* Error */}
+        {fetchError && !loadingGuests && (
+          <div className="flex items-center justify-center py-16">
+            <p className="text-sm text-red-500">⚠️ {fetchError}</p>
+          </div>
+        )}
+
+        {/* Empty */}
+        {!loadingGuests && !fetchError && guests.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-16 gap-2">
+            <Users className={`w-10 h-10 ${isDark ? "text-slate-600" : "text-slate-300"}`} />
+            <p className={`text-sm ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+              No guests yet. Create your first guest!
+            </p>
+          </div>
+        )}
+
         {/* Mobile Cards */}
-        <div className="block md:hidden p-4 space-y-3">
-          {guests.map((guest) => (
-            <div
-              key={guest.id}
-              onClick={() => handleViewDetails(guest)}
-              className={`rounded-lg border p-4 cursor-pointer transition-all hover:scale-[1.01] ${
-                isDark
-                  ? "bg-slate-800/50 border-slate-700 hover:border-slate-600"
-                  : "bg-white border-slate-200 hover:border-slate-300 shadow-sm"
-              }`}
-            >
-              <div className="flex items-start justify-between mb-2">
-                <div>
-                  <p className="font-semibold text-sm">
-                    {guest.firstName} {guest.lastName}
-                  </p>
-                  <p className={`text-xs mt-1 ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-                    {guest.email}
-                  </p>
+        {!loadingGuests && !fetchError && guests.length > 0 && (
+          <div className="block md:hidden p-4 space-y-3">
+            {guests.map((guest) => (
+              <div
+                key={guest.id}
+                onClick={() => handleViewDetails(guest)}
+                className={`rounded-lg border p-4 cursor-pointer transition-all hover:scale-[1.01] ${
+                  isDark
+                    ? "bg-slate-800/50 border-slate-700 hover:border-slate-600"
+                    : "bg-white border-slate-200 hover:border-slate-300 shadow-sm"
+                }`}
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <p className="font-semibold text-sm">
+                      {guest.first_name} {guest.last_name}
+                    </p>
+                    <p className={`text-xs mt-1 ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                      {guest.email}
+                    </p>
+                  </div>
                 </div>
-                <span className={`px-2 py-1 rounded text-xs font-medium ${statusClass(guest.status)}`}>
-                  {guest.status}
-                </span>
+                <div className={`text-xs space-y-1 ${isDark ? "text-slate-400" : "text-slate-600"}`}>
+                  <p>📞 {guest.phone}</p>
+                  <p>📍 {guest.city} {guest.country ? `· ${guest.country}` : ""}</p>
+                </div>
               </div>
-              <div className={`text-xs space-y-1 ${isDark ? "text-slate-400" : "text-slate-600"}`}>
-                <p>📞 {guest.phone}</p>
-                <p>🏨 {guest.totalStays} stays • Last: {guest.lastVisit}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         {/* Desktop Table */}
-        <div className="hidden md:block overflow-x-auto">
-          <table className="w-full">
-            <thead className={`text-xs font-medium ${isDark ? "bg-slate-800/50" : "bg-slate-50"}`}>
-              <tr>
-                <th className={`px-4 py-3 text-left ${isDark ? "text-slate-400" : "text-slate-600"}`}>
-                  Guest
-                </th>
-                <th className={`px-4 py-3 text-left ${isDark ? "text-slate-400" : "text-slate-600"}`}>
-                  Contact
-                </th>
-                <th className={`px-4 py-3 text-left ${isDark ? "text-slate-400" : "text-slate-600"}`}>
-                  Document
-                </th>
-                <th className={`px-4 py-3 text-left ${isDark ? "text-slate-400" : "text-slate-600"}`}>
-                  Location
-                </th>
-                <th className={`px-4 py-3 text-left ${isDark ? "text-slate-400" : "text-slate-600"}`}>
-                  History
-                </th>
-                <th className={`px-4 py-3 text-left ${isDark ? "text-slate-400" : "text-slate-600"}`}>
-                  Status
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-              {guests.map((guest) => (
-                <tr
-                  key={guest.id}
-                  onClick={() => handleViewDetails(guest)}
-                  className={`cursor-pointer transition-colors ${
-                    isDark
-                      ? "hover:bg-slate-800/50"
-                      : "hover:bg-slate-50"
-                  }`}
-                >
-                  <td className="px-4 py-3">
-                    <div>
-                      <p className="font-medium text-sm">
-                        {guest.firstName} {guest.lastName}
-                      </p>
-                      <p className={`text-xs mt-0.5 ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-                        ID: {guest.id}
-                      </p>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="text-sm space-y-0.5">
-                      <p>{guest.email}</p>
-                      <p className={isDark ? "text-slate-400" : "text-slate-600"}>
-                        {guest.phone}
-                      </p>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="text-sm">
-                      <p>{guest.documentType}</p>
-                      <p className={isDark ? "text-slate-400" : "text-slate-600"}>
-                        {guest.document}
-                      </p>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="text-sm">
-                      <p>{guest.city}</p>
-                      <p className={isDark ? "text-slate-400" : "text-slate-600"}>
-                        {guest.country}
-                      </p>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="text-sm">
-                      <p>{guest.totalStays} stays</p>
-                      <p className={isDark ? "text-slate-400" : "text-slate-600"}>
-                        {guest.lastVisit}
-                      </p>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-block px-2.5 py-1 rounded-lg text-xs font-medium ${statusClass(guest.status)}`}>
-                      {guest.status}
-                    </span>
-                  </td>
+        {!loadingGuests && !fetchError && guests.length > 0 && (
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full">
+              <thead className={`text-xs font-medium ${isDark ? "bg-slate-800/50" : "bg-slate-50"}`}>
+                <tr>
+                  <th className={`px-4 py-3 text-left ${isDark ? "text-slate-400" : "text-slate-600"}`}>Guest</th>
+                  <th className={`px-4 py-3 text-left ${isDark ? "text-slate-400" : "text-slate-600"}`}>Email</th>
+                  <th className={`px-4 py-3 text-left ${isDark ? "text-slate-400" : "text-slate-600"}`}>Phone</th>
+                  <th className={`px-4 py-3 text-left ${isDark ? "text-slate-400" : "text-slate-600"}`}>Document</th>
+                  <th className={`px-4 py-3 text-left ${isDark ? "text-slate-400" : "text-slate-600"}`}>Location</th>
+                  <th className={`px-4 py-3 text-left ${isDark ? "text-slate-400" : "text-slate-600"}`}>Registered</th>
+                  <th className={`px-4 py-3 text-left ${isDark ? "text-slate-400" : "text-slate-600"}`}>Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className={`divide-y ${isDark ? "divide-slate-700" : "divide-slate-100"}`}>
+                {guests.map((guest) => (
+                  <tr
+                    key={guest.id}
+                    onClick={() => handleViewDetails(guest)}
+                    className={`cursor-pointer transition-colors ${
+                      isDark ? "hover:bg-slate-800/50" : "hover:bg-slate-50"
+                    }`}
+                  >
+                    <td className="px-4 py-3">
+                      <p className="font-medium text-sm">
+                        {guest.first_name} {guest.last_name}
+                      </p>
+                    </td>
+                    <td className="px-4 py-3 text-sm">{guest.email}</td>
+                    <td className={`px-4 py-3 text-sm ${isDark ? "text-slate-300" : "text-slate-700"}`}>
+                      {guest.phone}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="text-sm">
+                        <p>{guest.document_type}</p>
+                        <p className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                          {guest.document_number}
+                        </p>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="text-sm">
+                        <p>{guest.city}</p>
+                        <p className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                          {guest.country}
+                        </p>
+                      </div>
+                    </td>
+                    <td className={`px-4 py-3 text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                      {new Date(guest.created_at).toLocaleDateString()}
+                    </td>
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => handleViewDetails(guest)}
+                        className="px-3 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 border border-emerald-200 hover:bg-emerald-200 transition-colors"
+                      >
+                        Active
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Modals */}

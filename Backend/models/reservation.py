@@ -65,3 +65,6 @@ class Reservation(Base):
     __table_args__ = (
         CheckConstraint('check_out_date > check_in_date', name='check_dates'),
     )
+    
+    
+    

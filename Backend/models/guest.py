@@ -24,6 +24,7 @@ class Guest(Base):
     address: Mapped[str | None] = mapped_column(String(180))
     city: Mapped[str | None] = mapped_column(String(80))
     country: Mapped[str | None] = mapped_column(String(80))
+    password_hash: Mapped[str | None] = mapped_column(String(255)) 
     notes: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
         DateTime,

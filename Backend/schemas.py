@@ -185,3 +185,57 @@ class ReservationConfirmation(BaseModel):
     total_amount: Decimal
     status: str
     message: str    
+    
+class GuestRegister(BaseModel):
+    first_name: str
+    last_name: str
+    email: EmailStr
+    phone: str
+    password: str
+    confirm_password: str
+    document_type: Optional[str] = None
+    document_number: Optional[str] = None
+    date_of_birth: Optional[date] = None
+
+class GuestLogin(BaseModel):
+    email: EmailStr
+    password: str    
+    
+
+class ReservationResponse(BaseModel):
+    id: str
+    guest_name: str
+    email: str
+    room_number: str
+    check_in_date: str
+    check_out_date: str
+    status: str
+    total_price: float
+
+    class Config:
+        from_attributes = True
+
+class PaginatedReservationResponse(BaseModel):
+    data: list[dict]
+    total: int
+    page: int
+    limit: int   
+    
+class ReservationResponse(BaseModel):
+    id: str
+    guest_name: str
+    email: str
+    room_number: str
+    check_in_date: str
+    check_out_date: str
+    status: str
+    total_price: float
+
+    class Config:
+        from_attributes = True
+
+class PaginatedReservationResponse(BaseModel):
+    data: list[dict]
+    total: int
+    page: int
+    limit: int     
