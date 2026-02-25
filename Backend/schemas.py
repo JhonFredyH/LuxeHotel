@@ -239,3 +239,33 @@ class PaginatedReservationResponse(BaseModel):
     total: int
     page: int
     limit: int     
+
+
+class RoomStatusUpdate(BaseModel):
+    status: str  # available | occupied | maintenance | cleaning
+
+class RoomPhysical(BaseModel):
+    """Habitación física expandida (una por unidad de quantity)"""
+    id: str           # uuid del tipo + índice, ej: "uuid-1"
+    room_type_id: str # uuid real del rooms
+    number: str       # "101", "102"...
+    name: str
+    slug: str
+    type: str         # nombre formateado del tipo
+    status: str
+    price_per_night: float
+    floor: Optional[str]
+    view_type: Optional[str]
+    max_guests: int
+    image_url: Optional[str]
+    amenities: List[str]
+    size_m2: Optional[int]
+    rating: Optional[float]
+
+class RoomStatsResponse(BaseModel):
+    available: int
+    occupied: int
+    maintenance: int
+    cleaning: int
+    total: int    
+    

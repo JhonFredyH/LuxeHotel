@@ -130,29 +130,54 @@ const ReservationsPage = ({ theme }) => {
   };
 
   const handleSubmitNewReservation = async (formData) => {
+    if (!formData.roomId) {
+      alert("Please select a room");
+      return;
+    }
+    if (!formData.email) {
+      alert("Please enter guest email");
+      return;
+    }
+    if (!formData.checkIn || !formData.checkOut) {
+      alert("Please select check-in and check-out dates");
+      return;
+    }
     try {
+      const nameParts = (formData.guestName ?? "").trim().split(" ");
+      const firstName = nameParts[0] ?? "Guest";
+      const lastName = nameParts.slice(1).join(" ") || "-";
+
+      const body = {
+        room_id: formData.roomId,
+        check_in_date: formData.checkIn,
+        check_out_date: formData.checkOut,
+        adults: 1,
+        children: 0,
+        special_requests: formData.notes ?? "",
+        first_name: firstName,
+        last_name: lastName,
+        email: formData.email,
+        phone: formData.phone ?? "",
+      };
+
+      console.log("Sending reservation:", body);
+
       const res = await fetch(`${API_URL}/reservations`, {
         method: "POST",
         headers: authHeader(),
-        body: JSON.stringify({
-          room_id: formData.roomId,
-          check_in_date: formData.checkIn,
-          check_out_date: formData.checkOut,
-          adults: formData.adults ?? 1,
-          children: formData.children ?? 0,
-          special_requests: formData.notes,
-          first_name: formData.guestName?.split(" ")[0] ?? "",
-          last_name: formData.guestName?.split(" ").slice(1).join(" ") ?? "",
-          email: formData.email,
-          phone: formData.phone,
-        }),
+        body: JSON.stringify(body),
       });
+
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        alert(err.detail || "Error creating reservation");
+        // Mostrar el error real del backend
+        const detail = Array.isArray(err.detail)
+          ? err.detail.map((e) => `${e.loc?.join(".")}: ${e.msg}`).join("\n")
+          : err.detail || "Error creating reservation";
+        alert(detail);
         return;
       }
-      // Refrescar tabla y KPIs
+
       setTableKey((k) => k + 1);
       fetchKpiTotals();
     } catch {

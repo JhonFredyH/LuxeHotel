@@ -13,6 +13,8 @@ from models.user import User
 from models.guest import Guest
 from models.room import Room
 from models.reservation import Reservation, ReservationStatus
+from routers import rooms
+
 
 from schemas import (
     UserCreate, UserResponse, Token, LoginRequest,
@@ -35,6 +37,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(rooms.router)
 
 # Dependency DB
 def get_db():
@@ -720,3 +723,150 @@ def get_reservations(
         })
 
     return {"data": enriched, "total": result["total"], "page": result["page"], "limit": result["limit"]}
+
+@app.post("/reservations", status_code=201)
+def create_reservation_admin(
+    reservation: GuestReservationCreate,
+    db: Session = Depends(get_db)
+):
+    """Crear reservación desde el panel admin"""
+    if reservation.check_out_date <= reservation.check_in_date:
+        raise HTTPException(status_code=400, detail="Check-out must be after check-in")
+
+    room = db.query(Room).filter(Room.id == reservation.room_id).first()
+    if not room:
+        raise HTTPException(status_code=404, detail="Room not found")
+
+    guest = db.query(Guest).filter(Guest.email == reservation.email).first()
+    if not guest:
+        guest = Guest(
+            first_name=reservation.first_name,
+            last_name=reservation.last_name,
+            email=reservation.email,
+            phone=reservation.phone,
+        )
+        db.add(guest)
+        db.flush()
+
+    nights  = calculate_nights(reservation.check_in_date, reservation.check_out_date)
+    pricing = calculate_pricing(room.price_per_night, nights)
+
+    new_res = Reservation(
+        guest_id=guest.id,
+        room_id=reservation.room_id,
+        check_in_date=reservation.check_in_date,
+        check_out_date=reservation.check_out_date,
+        adults=reservation.adults,
+        children=reservation.children,
+        status=ReservationStatus.confirmed,
+        special_requests=reservation.special_requests,
+        subtotal=pricing["subtotal"],
+        taxes=pricing["taxes"],
+        service_fee=pricing["service_fee"],
+        total_amount=pricing["total_amount"],
+    )
+
+    db.add(new_res)
+    db.commit()
+    db.refresh(new_res)
+
+    return {
+        "id": str(new_res.id),
+        "guest_name": f"{guest.first_name} {guest.last_name}",
+        "room_name": room.name,
+        "check_in_date": str(new_res.check_in_date),
+        "check_out_date": str(new_res.check_out_date),
+        "total_amount": float(new_res.total_amount),
+        "status": new_res.status.value,
+    }
+    
+@app.get("/dashboard/stats")
+def get_dashboard_stats(db: Session = Depends(get_db)):
+    """KPIs del dashboard principal"""
+    from datetime import date
+    from sqlalchemy import func
+    today = date.today()
+
+    # Ingresos de hoy
+    revenue_today = db.execute(
+        text("""
+            SELECT COALESCE(SUM(total_amount), 0)
+            FROM reservations
+            WHERE check_in_date = :today
+              AND status NOT IN ('cancelled')
+        """),
+        {"today": today}
+    ).scalar() or 0
+
+    # Tasa de ocupación (reservas activas / total rooms)
+    total_rooms = db.execute(text("SELECT COUNT(*) FROM rooms WHERE is_active = true")).scalar() or 1
+    occupied = db.execute(
+        text("""
+            SELECT COUNT(DISTINCT room_id) FROM reservations
+            WHERE status IN ('confirmed', 'checked_in')
+              AND check_in_date <= :today
+              AND check_out_date > :today
+        """),
+        {"today": today}
+    ).scalar() or 0
+    occupancy = round((occupied / total_rooms) * 100, 1)
+
+    # Check-ins de hoy
+    checkins_today = db.execute(
+        text("""
+            SELECT COUNT(*) FROM reservations
+            WHERE check_in_date = :today
+              AND status IN ('confirmed', 'pending', 'checked_in')
+        """),
+        {"today": today}
+    ).scalar() or 0
+
+    # Guests activos (con reserva activa hoy)
+    active_guests = db.execute(
+        text("""
+            SELECT COUNT(*) FROM reservations
+            WHERE status IN ('confirmed', 'checked_in')
+              AND check_in_date <= :today
+              AND check_out_date > :today
+        """),
+        {"today": today}
+    ).scalar() or 0
+
+    return {
+        "revenue":        float(revenue_today),
+        "occupancy":      occupancy,
+        "checkins_today": checkins_today,
+        "active_guests":  active_guests,
+    }
+
+
+@app.get("/dashboard/revenue")
+def get_dashboard_revenue(
+    days: int = Query(30, ge=7, le=90),
+    db: Session = Depends(get_db)
+):
+    """Ingresos por día para el gráfico de línea"""
+    rows = db.execute(
+        text("""
+            SELECT
+                check_in_date::date AS date,
+                COALESCE(SUM(total_amount), 0) AS revenue
+            FROM reservations
+            WHERE status NOT IN ('cancelled')
+              AND check_in_date >= CURRENT_DATE - INTERVAL ':days days'
+            GROUP BY check_in_date::date
+            ORDER BY check_in_date::date ASC
+        """.replace(":days", str(days)))
+    ).fetchall()
+
+    return {
+        "data": [
+            {
+                "date": row[0].strftime("%b %d"),
+                "revenue": float(row[1]),
+            }
+            for row in rows
+        ]
+    }
+    
+    

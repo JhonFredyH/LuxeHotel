@@ -1,10 +1,21 @@
 import uuid
+import enum
 from datetime import datetime, time
 from decimal import Decimal
-from sqlalchemy import String, Text, Numeric, Integer, Time, Boolean, DateTime, Table, Column, ForeignKey
+from sqlalchemy import String, Text, Numeric, Integer, Time, Boolean, DateTime, Table, Column, ForeignKey, Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database import Base
+
+
+# ============================================
+# ENUM DE STATUS
+# ============================================
+class RoomStatus(str, enum.Enum):
+    available   = "available"
+    occupied    = "occupied"
+    maintenance = "maintenance"
+    cleaning    = "cleaning"
 
 
 # Tabla intermedia para la relación N:M entre rooms y amenities
@@ -42,6 +53,12 @@ class Room(Base):
     check_out_time: Mapped[time | None] = mapped_column(Time)
     cancellation_policy: Mapped[str | None] = mapped_column(Text)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # ← COLUMNA NUEVA
+    status: Mapped[str] = mapped_column(
+        SAEnum('available', 'occupied', 'maintenance', 'cleaning', name='roomstatus'),
+        nullable=False,
+        default='available'
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=lambda: datetime.now()
