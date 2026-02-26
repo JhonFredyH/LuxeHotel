@@ -1,216 +1,191 @@
-# 🏨 LuxeHotel - Sistema de Gestión Hotelera
+# LuxeHotel — Hotel Management System
 
-<div align="center">
+Sistema completo de gestión hotelera con panel administrativo, reservas en tiempo real, control de habitaciones por unidad individual y sistema de reviews integrado.
 
-![LuxeHotel Banner](URL_DE_UNA_IMAGEN_PRINCIPAL)
-
-**Sistema completo de gestión hotelera con reservas en tiempo real, sistema de reviews y pagos integrados**
-
-[Demo en vivo](https://tu-deploy.com) • [Documentación API](https://tu-api.com/docs) • [Reporte de Bug](https://github.com/tu-usuario/luxehotel/issues)
-
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.104.1-009688?style=flat&logo=fastapi)](https://fastapi.tiangolo.com/)
-[![React](https://img.shields.io/badge/React-18.2.0-61DAFB?style=flat&logo=react)](https://reactjs.org/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-336791?style=flat&logo=postgresql)](https://www.postgresql.org/)
-[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat&logo=docker)](https://www.docker.com/)
-
-</div>
+![FastAPI](https://img.shields.io/badge/FastAPI-0.104-009688?style=flat&logo=fastapi)
+![React](https://img.shields.io/badge/React-18.2-61DAFB?style=flat&logo=react)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-336791?style=flat&logo=postgresql)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat&logo=docker)
 
 ---
 
-## 📋 Tabla de Contenidos
+## Tabla de contenidos
 
-- [Características](#-características)
-- [Demo](#-demo)
-- [Tech Stack](#-tech-stack)
-- [Arquitectura](#-arquitectura)
-- [Instalación](#-instalación)
-- [Variables de Entorno](#-variables-de-entorno)
-- [API Documentation](#-api-documentation)
-- [Capturas de Pantalla](#-capturas-de-pantalla)
-- [Roadmap](#-roadmap)
-- [Contribuir](#-contribuir)
-- [Contacto](#-contacto)
+- [Características](#características)
+- [Pila tecnológica](#pila-tecnológica)
+- [Arquitectura](#arquitectura)
+- [Modelo de base de datos](#modelo-de-base-de-datos)
+- [Instalación](#instalación)
+- [Variables de entorno](#variables-de-entorno)
+- [Documentación de la API](#documentación-de-la-api)
+- [Hoja de ruta](#hoja-de-ruta)
 
 ---
 
-## ✨ Características
+## Características
 
-### 🎯 Funcionalidades Principales
+### Panel de administración
+- Dashboard con métricas en tiempo real (ingresos, ocupación, check-ins del día, huéspedes activos)
+- Gestión completa de reservas: crear, editar, check-in, check-out, cancelar
+- Gestión de huéspedes con búsqueda y paginación
+- Gestión de habitaciones con filtros por piso y estado
 
-- **Sistema de Reservas Inteligente**
-  - Búsqueda y filtrado avanzado de habitaciones
-  - Cálculo automático de precios con impuestos y tarifas
-  - Validación de disponibilidad en tiempo real
-  - Reservas para usuarios invitados (sin registro)
+### Sistema de habitaciones por unidad
+- Cada tipo de habitación tiene unidades físicas individuales (ej: 101, 102, 103...)
+- Control de estado por unidad: `available`, `occupied`, `maintenance`, `cleaning`
+- Los estados se sincronizan automáticamente con las reservas:
+  - Crear reserva → unidad pasa a `occupied`
+  - Check-out → unidad pasa a `cleaning`
+  - Cancelar → unidad vuelve a `available`
+- Al crear una reserva, solo se pueden seleccionar unidades disponibles
+- El staff puede cambiar el estado manualmente desde el panel
 
-- **Gestión de Habitaciones**
-  - 9 tipos diferentes de habitaciones
-  - Sistema de amenidades personalizables
-  - Galería de imágenes con Cloudinary CDN
-  - Control de inventario y disponibilidad
+### Sistema de reservas
+- Reservas desde el panel admin con selección visual de unidad
+- Reservas públicas sin autenticación (`/guest-booking`)
+- Cálculo automático de precios: subtotal + 10% impuestos + 1.4% servicio
+- Validación de capacidad y fechas
+- Búsqueda de huéspedes existentes por nombre o email
 
-- **Sistema de Reviews & Ratings**
-  - Reviews verificados (solo huéspedes con reserva confirmada)
-  - Calificaciones desglosadas (limpieza, confort, ubicación, staff, precio)
-  - Actualización automática de ratings con triggers de PostgreSQL
-  - Categorización por tipo de viajero (Solo, Pareja, Familia, Negocios)
+### Autenticación y roles
+- JWT con roles: `admin` y `guest`
+- Rutas protegidas por rol
+- Login independiente para administradores y huéspedes
 
-- **Autenticación & Autorización**
-  - JWT authentication
-  - Roles de usuario (Admin, Guest)
-  - Rutas protegidas
-
-- **Panel de Administración** *(próximamente)*
-  - Dashboard con métricas en tiempo real
-  - Gestión de reservas y huéspedes
-  - Reportes y analytics
-
-### 🚀 Características Técnicas
-
-- **API RESTful** con FastAPI y documentación automática (Swagger)
-- **Triggers automáticos** en PostgreSQL para actualización de ratings
-- **Paginación** en todos los endpoints
-- **Validación robusta** con Pydantic schemas
-- **Dockerizado** para fácil deployment
-- **Responsive Design** - Mobile first
-- **CDN** con Cloudinary para optimización de imágenes
+### Sistema de reviews
+- Reseñas verificadas (solo huéspedes con reserva confirmada)
+- Calificaciones desglosadas: limpieza, comodidad, ubicación, personal, valor
+- Actualización automática de ratings con triggers de PostgreSQL
+- Categorización por tipo de viajero
 
 ---
 
-## 🎬 Demo
+## Pila tecnológica
 
-### Video Demo
-[![Video Demo](https://img.youtube.com/vi/TU_VIDEO_ID/0.jpg)](https://www.youtube.com/watch?v=TU_VIDEO_ID)
+**Frontend**
+| Tecnología | Versión | Uso |
+|-----------|---------|-----|
+| React | 18.2 | UI Library |
+| React Router | 6 | Navegación |
+| Context API | — | State Management |
+| TailwindCSS | 3 | Estilos |
+| Lucide React | — | Iconos |
 
-### Screenshots en vivo
-- **Producción:** [https://luxehotel-demo.vercel.app](URL)
-- **API Docs:** [https://api.luxehotel.com/docs](URL)
+**Backend**
+| Tecnología | Versión | Uso |
+|-----------|---------|-----|
+| FastAPI | 0.104 | Framework web |
+| SQLAlchemy | 2.0 | ORM |
+| Pydantic | 2 | Validación |
+| Alembic | — | Migraciones |
+| JWT | — | Autenticación |
 
----
-
-## 🛠 Tech Stack
-
-### Frontend
-```
-React 18.2         - UI Library
-React Router 6     - Navegación
-Context API        - State Management
-TailwindCSS        - Estilos
-Lucide React       - Iconos
-Axios              - HTTP Client
-```
-
-### Backend
-```
-FastAPI 0.104      - Framework web
-SQLAlchemy 2.0     - ORM
-Pydantic           - Validación de datos
-Alembic            - Migraciones de BD
-JWT                - Autenticación
-```
-
-### Base de Datos
-```
-PostgreSQL 17      - Base de datos principal
-Redis              - Cache (próximamente)
-```
-
-### Infraestructura & DevOps
-```
-Docker             - Containerización
-Docker Compose     - Orquestación local
-Cloudinary         - CDN & Gestión de imágenes
-GitHub Actions     - CI/CD (próximamente)
-```
+**Infraestructura**
+| Tecnología | Uso |
+|-----------|-----|
+| PostgreSQL 17 | Base de datos principal |
+| Docker Compose | Orquestación local |
+| Cloudinary | CDN e imágenes |
 
 ---
 
-## 🏗 Arquitectura
+## Arquitectura
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                         FRONTEND                            │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │    React     │  │   Context    │  │  TailwindCSS │      │
-│  │   Router     │  │     API      │  │              │      │
-│  └──────────────┘  └──────────────┘  └──────────────┘      │
+│         React + TailwindCSS + Context API                   │
 └────────────────────────┬────────────────────────────────────┘
                          │ HTTP/REST
                          ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                      API LAYER (FastAPI)                    │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │  Endpoints   │  │    Auth      │  │  Validation  │      │
-│  │              │  │     JWT      │  │  (Pydantic)  │      │
-│  └──────────────┘  └──────────────┘  └──────────────┘      │
+│                  API LAYER (FastAPI)                        │
+│         Endpoints · JWT Auth · Pydantic Validation          │
 └────────────────────────┬────────────────────────────────────┘
                          │ SQLAlchemy ORM
                          ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    DATABASE (PostgreSQL)                    │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │    Rooms     │  │ Reservations │  │   Reviews    │      │
-│  │    Guests    │  │   Payments   │  │    Users     │      │
-│  └──────────────┘  └──────────────┘  └──────────────┘      │
-│                    + Triggers automáticos                   │
+│                DATABASE (PostgreSQL 17)                     │
+│  rooms · room_units · reservations · guests · reviews       │
+│  users · payments · room_amenities                          │
+│                  + Triggers automáticos ⭐                  │
 └─────────────────────────────────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────────┐
-│              CLOUDINARY CDN (Imágenes)                      │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Modelo de Base de Datos
-```sql
-┌─────────────┐       ┌──────────────┐       ┌─────────────┐
-│    users    │       │    guests    │       │    rooms    │
-├─────────────┤       ├──────────────┤       ├─────────────┤
-│ id (PK)     │       │ id (PK)      │       │ id (PK)     │
-│ email       │       │ first_name   │       │ name        │
-│ password    │       │ last_name    │       │ price       │
-│ role        │       │ email        │       │ rating ⭐   │
-└─────────────┘       │ phone        │       │ total_rev ⭐│
-                      └──────┬───────┘       └──────┬──────┘
-                             │                      │
-                             │   ┌──────────────────┘
-                             │   │
-                      ┌──────▼───▼──────┐
-                      │  reservations   │
-                      ├─────────────────┤
-                      │ id (PK)         │
-                      │ guest_id (FK)   │
-                      │ room_id (FK)    │
-                      │ check_in_date   │
-                      │ check_out_date  │
-                      │ total_amount    │
-                      │ status          │
-                      └────────┬────────┘
-                               │
-                      ┌────────▼────────┐
-                      │    reviews      │
-                      ├─────────────────┤
-                      │ id (PK)         │
-                      │ room_id (FK)    │
-                      │ guest_id (FK)   │
-                      │ rating_overall  │
-                      │ comment         │
-                      │ verified        │
-                      └─────────────────┘
-
-⭐ = Actualizado automáticamente por triggers
 ```
 
 ---
 
-## 🚀 Instalación
+## Modelo de base de datos
 
-### Prerrequisitos
-```bash
-- Docker & Docker Compose
+```
+┌─────────────┐       ┌──────────────┐       ┌──────────────────┐
+│    users    │       │    guests    │       │      rooms       │
+├─────────────┤       ├──────────────┤       ├──────────────────┤
+│ id (PK)     │       │ id (PK)      │       │ id (PK)          │
+│ email       │       │ first_name   │       │ name             │
+│ password    │       │ last_name    │       │ price_per_night  │
+│ role        │       │ email        │       │ floor            │
+└─────────────┘       │ phone        │       │ quantity         │
+                      └──────┬───────┘       │ rating ⭐        │
+                             │               │ status           │
+                             │               └────────┬─────────┘
+                             │                        │
+                             │               ┌────────▼─────────┐
+                             │               │   room_units     │
+                             │               ├──────────────────┤
+                             │               │ id (PK)          │
+                             │               │ room_id (FK)     │
+                             │               │ unit_number      │
+                             │               │ status           │
+                             │               │ notes            │
+                             │               └──────────────────┘
+                             │
+                      ┌──────▼───────────────┐
+                      │     reservations     │
+                      ├──────────────────────┤
+                      │ id (PK)              │
+                      │ guest_id (FK)        │
+                      │ room_id (FK)         │
+                      │ check_in_date        │
+                      │ check_out_date       │
+                      │ status               │
+                      │ total_amount         │
+                      │ special_requests*    │
+                      └──────────┬───────────┘
+                                 │
+                      ┌──────────▼───────────┐
+                      │       reviews        │
+                      ├──────────────────────┤
+                      │ id (PK)              │
+                      │ room_id (FK)         │
+                      │ guest_id (FK)        │
+                      │ rating_overall ⭐    │
+                      │ comment              │
+                      │ verified             │
+                      └──────────────────────┘
+
+⭐ = Actualizado automáticamente por triggers de PostgreSQL
+* room_number se almacena dentro de special_requests con prefijo room_number::
+```
+
+### Estados de room_unit
+
+```
+available ──→ occupied  (al crear reserva o check-in)
+occupied  ──→ cleaning  (al hacer check-out)
+cleaning  ──→ available (staff confirma limpieza)
+available ──→ maintenance (staff asigna manualmente)
+maintenance ──→ available (staff resuelve)
+```
+
+---
+
+## Instalación
+
+### Requisitos previos
+- Docker Desktop
 - Node.js 18+
 - Python 3.12+
 - Git
-```
 
 ### 1. Clonar el repositorio
 ```bash
@@ -219,301 +194,167 @@ cd luxehotel
 ```
 
 ### 2. Configurar variables de entorno
-
-#### Backend (.env en /Backend)
 ```bash
-cp .env.example .env
-```
-```env
-# Database
-DATABASE_URL=postgresql://luxe_user:luxe_password@luxehotel_db:5432/luxeHotel
+# Backend
+cp backend/.env.example backend/.env
 
-# JWT
-SECRET_KEY=tu-secret-key-super-segura-aqui
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-
-# Cloudinary
-CLOUDINARY_CLOUD_NAME=tu-cloud-name
-CLOUDINARY_API_KEY=tu-api-key
-CLOUDINARY_API_SECRET=tu-api-secret
+# Frontend
+cp frontend/.env.example frontend/.env
 ```
 
-#### Frontend (.env en /Frontend)
+### 3. Levantar el backend con Docker
 ```bash
-cp .env.example .env
-```
-```env
-VITE_API_URL=http://localhost:8000
-```
-
-### 3. Levantar con Docker
-```bash
-# Desde la raíz del proyecto
+cd backend
 docker-compose up -d
 ```
 
-Esto levantará:
-- ✅ PostgreSQL en `localhost:5433`
-- ✅ Backend API en `http://localhost:8000`
-- ✅ Documentación API en `http://localhost:8000/docs`
+Esto levanta:
+- PostgreSQL en `localhost:5433`
+- API backend en `http://localhost:8000`
+- Docs Swagger en `http://localhost:8000/docs`
 
-### 4. Instalar y correr el Frontend
+### 4. Instalar y correr el frontend
 ```bash
-cd Frontend
+cd frontend
 npm install
 npm run dev
 ```
 
 Frontend disponible en `http://localhost:5173`
 
-### 5. Cargar datos de ejemplo (Opcional)
+### 5. Activar migraciones (primera vez)
 ```bash
-docker exec -it luxehotel_backend bash
-python scripts/seed_data.py
+cd backend
+venv\Scripts\activate        # Windows
+# source venv/bin/activate   # Linux/Mac
+alembic stamp head
 ```
 
 ---
 
-## 🔐 Variables de Entorno
+## Variables de entorno
 
-### Backend (.env)
+### Backend (`backend/.env`)
+| Variable | Descripción | Requerido |
+|----------|-------------|-----------|
+| `DATABASE_URL` | URL de conexión PostgreSQL | ✅ |
+| `SECRET_KEY` | Clave secreta para JWT | ✅ |
+| `ALGORITHM` | Algoritmo JWT (default: HS256) | ❌ |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Expiración del token | ❌ |
+| `CLOUDINARY_CLOUD_NAME` | Nombre de nube Cloudinary | ✅ |
+| `CLOUDINARY_API_KEY` | API key de Cloudinary | ✅ |
+| `CLOUDINARY_API_SECRET` | API secret de Cloudinary | ✅ |
 
-| Variable | Descripción | Requerido | Default |
-|----------|-------------|-----------|---------|
-| `DATABASE_URL` | URL de conexión PostgreSQL | ✅ | - |
-| `SECRET_KEY` | Llave secreta para JWT | ✅ | - |
-| `ALGORITHM` | Algoritmo de encriptación | ❌ | HS256 |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | Expiración del token | ❌ | 30 |
-| `CLOUDINARY_CLOUD_NAME` | Nombre de cloud Cloudinary | ✅ | - |
-| `CLOUDINARY_API_KEY` | API Key de Cloudinary | ✅ | - |
-| `CLOUDINARY_API_SECRET` | API Secret de Cloudinary | ✅ | - |
-
-### Frontend (.env)
-
-| Variable | Descripción | Requerido | Default |
-|----------|-------------|-----------|---------|
-| `VITE_API_URL` | URL del backend | ✅ | http://localhost:8000 |
+### Frontend (`frontend/.env`)
+| Variable | Descripción | Requerido |
+|----------|-------------|-----------|
+| `VITE_API_URL` | URL del backend | ✅ |
 
 ---
 
-## 📚 API Documentation
+## Documentación de la API
 
-### Endpoints Principales
+La documentación interactiva completa está disponible en `http://localhost:8000/docs`.
 
-#### 🏠 Rooms
-```http
-GET /rooms
-```
-Lista todas las habitaciones con filtros y paginación
+### Habitaciones
 
-**Query Parameters:**
-- `page` (int): Número de página (default: 1)
-- `limit` (int): Items por página (default: 20)
-- `min_price` (float): Precio mínimo
-- `max_price` (float): Precio máximo
-- `max_guests` (int): Capacidad mínima de huéspedes
-- `view_type` (string): Tipo de vista (Garden, City, Panoramic)
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| `GET` | `/rooms` | Listar habitaciones con filtros |
+| `GET` | `/rooms-admin` | Listar habitaciones con room_numbers (admin) |
+| `GET` | `/rooms-admin/stats` | Conteo de unidades por estado |
+| `GET` | `/rooms-admin/floors` | Pisos disponibles |
+| `GET` | `/rooms-admin/{room_id}/units` | Unidades físicas de un tipo |
+| `POST` | `/rooms-admin/{room_id}/units` | Crear unidad |
+| `PATCH` | `/rooms-admin/units/{unit_id}/status` | Cambiar estado de unidad |
+| `DELETE` | `/rooms-admin/units/{unit_id}` | Eliminar unidad |
+| `GET` | `/rooms/{room_id}/reviews` | Reviews de una habitación |
 
-**Response:**
-```json
-{
-  "data": [
-    {
-      "id": "uuid",
-      "name": "Double Elegance",
-      "price_per_night": 220.00,
-      "rating": 4.8,
-      "total_reviews": 5,
-      "size_m2": 40,
-      "view_type": "Garden",
-      "amenities": ["balcony", "minibar", "smart_tv"]
-    }
-  ],
-  "total": 9,
-  "page": 1,
-  "limit": 20
-}
-```
+### Reservas
 
----
-```http
-GET /rooms/{room_id}/reviews
-```
-Obtiene reviews de una habitación específica
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| `GET` | `/reservations` | Listar reservas con filtros |
+| `POST` | `/reservations` | Crear reserva (admin) |
+| `PUT` | `/reservations/{id}` | Actualizar reserva |
+| `POST` | `/reservations/{id}/checkin` | Realizar check-in |
+| `POST` | `/reservations/{id}/checkout` | Realizar check-out |
+| `POST` | `/reservations/{id}/cancel` | Cancelar reserva |
+| `POST` | `/guest-booking` | Reserva pública sin autenticación |
 
-**Response:**
-```json
-{
-  "data": [
-    {
-      "id": 1,
-      "rating_overall": 4.8,
-      "comment_title": "Excelente habitación",
-      "comment_text": "La habitación estaba impecable...",
-      "guest_name": "Alexander H.",
-      "stay_date": "2025-01-15",
-      "traveler_type": "Couple"
-    }
-  ],
-  "total": 5
-}
-```
+### Huéspedes
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| `GET` | `/guests` | Listar huéspedes |
+| `POST` | `/guests` | Crear huésped |
+| `GET` | `/guests/{id}` | Obtener huésped |
+| `PUT` | `/guests/{id}` | Actualizar huésped |
+| `DELETE` | `/guests/{id}` | Eliminar huésped |
+| `POST` | `/guests/register` | Registro público |
+| `POST` | `/guests/login` | Login de huésped |
+
+### Autenticación y dashboard
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| `POST` | `/login` | Login de administrador |
+| `POST` | `/register` | Registro de administrador |
+| `GET` | `/dashboard/stats` | KPIs del dashboard |
+| `GET` | `/dashboard/revenue` | Ingresos por día |
 
 ---
 
-#### 📅 Reservations
-```http
-POST /guest-booking
-```
-Crear una reserva (sin autenticación requerida)
-
-**Request Body:**
-```json
-{
-  "room_id": "uuid",
-  "check_in_date": "2026-03-01",
-  "check_out_date": "2026-03-05",
-  "adults": 2,
-  "children": 0,
-  "first_name": "John",
-  "last_name": "Doe",
-  "email": "john@example.com",
-  "phone": "+1234567890",
-  "special_requests": "Late check-in please"
-}
-```
-
-**Response:**
-```json
-{
-  "reservation_id": "uuid",
-  "reference_number": "LX-ABC12345",
-  "total_amount": 1200.00,
-  "status": "pending",
-  "message": "Reservation created successfully!"
-}
-```
-
----
-
-#### 🔐 Authentication
-```http
-POST /login
-```
-
-**Request:**
-```json
-{
-  "email": "user@example.com",
-  "password": "password123"
-}
-```
-
-**Response:**
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "bearer"
-}
-```
-
----
-
-### Documentación interactiva
-
-Visita `http://localhost:8000/docs` para acceder a la documentación completa de Swagger UI.
-
----
-
-## 📸 Capturas de Pantalla
-
-### Página Principal
-![Home](screenshots/home.png)
-
-### Comparación de Habitaciones
-![Compare Rooms](screenshots/compare-rooms.png)
-
-### Sistema de Reviews
-![Reviews Modal](screenshots/reviews-modal.png)
-
-### Proceso de Reserva
-![Reservation Flow](screenshots/reservation.png)
-
----
-
-## 🗺 Roadmap
+## Hoja de ruta
 
 ### ✅ Completado
-- [x] Sistema de autenticación JWT
-- [x] CRUD de habitaciones
-- [x] Sistema de reservas
-- [x] Reviews y ratings
-- [x] Integración con Cloudinary
-- [x] Responsive design
-- [x] Docker setup
+- Sistema de autenticación JWT (admin + guest)
+- CRUD de habitaciones con amenidades
+- Control de inventario por unidad física (`room_units`)
+- Sincronización automática de estados unidad ↔ reserva
+- Sistema de reservas con selección visual de unidad
+- Check-in / check-out / cancelación con actualización de estado
+- Reviews y calificaciones con triggers automáticos
+- Panel de administración con dashboard de métricas
+- KPI cards de ocupación por unidad real
+- Integración con Cloudinary para imágenes
+- Dockerización completa
+- Diseño responsive
 
-### 🚧 En Progreso
-- [ ] Panel de administración
-- [ ] Dashboard con métricas
-- [ ] Sistema de notificaciones por email
+### 🚧 En progreso
+- Sistema de notificaciones por email
+- Mejoras al dashboard (gráficos de ocupación)
 
 ### 📋 Planeado
-- [ ] Integración con Stripe/PayPal
-- [ ] Chat en vivo con soporte
-- [ ] Sistema de descuentos y promociones
-- [ ] Multi-idioma (i18n)
-- [ ] PWA (Progressive Web App)
-- [ ] Integración con Google Calendar
-- [ ] Sistema de fidelización de clientes
-- [ ] Tests automatizados (Jest, Pytest)
-- [ ] CI/CD con GitHub Actions
+- Integración con Stripe / PayPal
+- Multiidioma (i18n)
+- PWA (Aplicación web progresiva)
+- Sistema de descuentos y promociones
+- Pruebas automatizadas (Jest, Pytest)
+- CI/CD con GitHub Actions
+- Redis para caché
 
 ---
 
-## 🤝 Contribuir
-
-Las contribuciones son bienvenidas! Por favor:
+## Contribuir
 
 1. Fork el proyecto
-2. Crea tu feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push al branch (`git push origin feature/AmazingFeature`)
+2. Crea tu rama: `git checkout -b feature/NuevaFuncionalidad`
+3. Commit: `git commit -m 'Add NuevaFuncionalidad'`
+4. Push: `git push origin feature/NuevaFuncionalidad`
 5. Abre un Pull Request
 
 ---
 
-## 📝 Licencia
+## Licencia
 
-Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para más detalles.
+MIT — ver archivo `LICENSE` para más detalles.
 
 ---
 
-## 👨‍💻 Autor
+## Autor
 
-**Tu Nombre**
-
+**Tu nombre**
 - GitHub: [@tu-usuario](https://github.com/tu-usuario)
-- LinkedIn: [Tu Nombre](https://linkedin.com/in/tu-perfil)
+- LinkedIn: [Tu nombre](https://linkedin.com)
 - Email: tu.email@example.com
-- Portfolio: [tuportfolio.com](https://tuportfolio.com)
-
----
-
-## 🙏 Agradecimientos
-
-- [FastAPI](https://fastapi.tiangolo.com/) - Framework web increíble
-- [React](https://reactjs.org/) - Biblioteca UI
-- [Cloudinary](https://cloudinary.com/) - Gestión de imágenes
-- [TailwindCSS](https://tailwindcss.com/) - Framework CSS
-
----
-
-<div align="center">
-
-**⭐ Si te gustó este proyecto, dale una estrella en GitHub! ⭐**
-
-[⬆ Volver arriba](#-luxehotel---sistema-de-gestión-hotelera)
-
-</div>
-
