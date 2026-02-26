@@ -135,16 +135,19 @@ def get_room_stats(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    rooms = db.query(Room).filter(Room.is_active == True).all()
-    expanded = expand_rooms(rooms)
-
+    from sqlalchemy import func
+    rows = (
+        db.query(RoomUnit.status, func.count(RoomUnit.id))
+        .join(Room, RoomUnit.room_id == Room.id)
+        .filter(Room.is_active == True)
+        .group_by(RoomUnit.status)
+        .all()
+    )
     stats = {"available": 0, "occupied": 0, "maintenance": 0, "cleaning": 0, "total": 0}
-    for r in expanded:
-        s = r["status"]
-        if s in stats:
-            stats[s] += 1
-        stats["total"] += 1
-
+    for status, count in rows:
+        if status in stats:
+            stats[status] = count
+        stats["total"] += count
     return stats
 
 
