@@ -142,6 +142,10 @@ const ReservationsPage = ({ theme }) => {
       alert("Please select check-in and check-out dates");
       return;
     }
+    if (!formData.roomNumber) {
+      alert("Please select a room number");
+      return;
+    }
     try {
       const nameParts = (formData.guestName ?? "").trim().split(" ");
       const firstName = nameParts[0] ?? "Guest";
@@ -149,6 +153,7 @@ const ReservationsPage = ({ theme }) => {
 
       const body = {
         room_id: formData.roomId,
+        room_number: formData.roomNumber,
         check_in_date: formData.checkIn,
         check_out_date: formData.checkOut,
         adults: 1,
@@ -207,6 +212,7 @@ const ReservationsPage = ({ theme }) => {
           method: "PUT",
           headers: authHeader(),
           body: JSON.stringify({
+            room_number: formData.roomNumber,
             check_in_date: formData.checkIn,
             check_out_date: formData.checkOut,
             special_requests: formData.notes,

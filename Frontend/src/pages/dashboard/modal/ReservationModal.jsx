@@ -18,6 +18,7 @@ const ReservationModal = ({
     checkIn: "",
     checkOut: "",
     roomId: "",
+    roomNumber: "",
     notes: "",
   });
 
@@ -37,10 +38,25 @@ const ReservationModal = ({
     const fetchRooms = async () => {
       setLoadingRooms(true);
       try {
+        const token =
+          localStorage.getItem("token") || localStorage.getItem("guest_token");
+        const adminRes = await fetch(`${API_URL}/rooms-admin`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+
+        if (adminRes.ok) {
+          const adminJson = await adminRes.json();
+          setRoomTypes(adminJson.data ?? []);
+          return;
+        }
+
         const res = await fetch(`${API_URL}/rooms?is_active=true&limit=100`);
         if (!res.ok) throw new Error();
         const json = await res.json();
-        const rooms = json.data ?? json;
+        const rooms = (json.data ?? json).map((room) => ({
+          ...room,
+          room_numbers: [],
+        }));
         setRoomTypes(rooms);
       } catch {
         setRoomTypes([]);
@@ -63,11 +79,12 @@ const ReservationModal = ({
         checkIn:   reservation.check_in_date  ?? reservation.checkIn  ?? "",
         checkOut:  reservation.check_out_date ?? reservation.checkOut ?? "",
         roomId:    reservation.room_id    ?? reservation.roomId ?? "",
-        notes:     reservation.notes      ?? "",
+        roomNumber: reservation.room_number ?? reservation.roomNumber ?? "",
+        notes:     reservation.notes      ?? reservation.special_requests ?? "",
       });
       setGuestSelected(true);
     } else {
-      setFormData({ guestId: "", guestName: "", email: "", phone: "", checkIn: "", checkOut: "", roomId: "", notes: "" });
+      setFormData({ guestId: "", guestName: "", email: "", phone: "", checkIn: "", checkOut: "", roomId: "", roomNumber: "", notes: "" });
       setGuestSearch("");
       setGuestResults([]);
       setGuestSelected(false);
@@ -126,7 +143,14 @@ const ReservationModal = ({
     setGuestSelected(false);
   };
 
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    if (name === "roomId") {
+      setFormData((prev) => ({ ...prev, roomId: value, roomNumber: "" }));
+      return;
+    }
+    setFormData({ ...formData, [name]: value });
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -136,6 +160,8 @@ const ReservationModal = ({
 
   if (!isOpen) return null;
   const isEditMode = !!reservation;
+  const selectedRoom = roomTypes.find((r) => r.id === formData.roomId);
+  const roomNumbers = selectedRoom?.room_numbers ?? [];
 
   // ── Helpers de estilo ────────────────────────────────────────
   const inputCls = `w-full px-4 py-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-colors ${
@@ -305,7 +331,7 @@ const ReservationModal = ({
                     )}
                   </select>
                   {formData.roomId && (() => {
-                    const selected = roomTypes.find((r) => r.id === formData.roomId);
+                    const selected = selectedRoom;
                     return selected ? (
                       <p className={`mt-1 text-xs ${isDark ? "text-emerald-400" : "text-emerald-600"}`}>
                         ✓ {selected.size_m2 ? `${selected.size_m2}m²` : ""} 
@@ -315,6 +341,72 @@ const ReservationModal = ({
                       </p>
                     ) : null;
                   })()}
+                </div>
+
+                <div>
+                  <label className={labelCls}>Room numbers *</label>
+                  {!formData.roomId && (
+                    <p className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                      Select a room type first.
+                    </p>
+                  )}
+                  {formData.roomId && roomNumbers.length === 0 && (
+                    <p className={`text-xs ${isDark ? "text-amber-400" : "text-amber-600"}`}>
+                      No room numbers available for this room type.
+                    </p>
+                  )}
+                  {formData.roomId && roomNumbers.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {roomNumbers.map((number) => {
+                        const selected = formData.roomNumber === number;
+                        return (
+                          <button
+                            key={number}
+                            type="button"
+                            onClick={() =>
+                              setFormData((prev) => ({ ...prev, roomNumber: number }))
+                            }
+                            className={`w-full rounded-xl border p-4 text-left transition-all ${
+                              selected
+                                ? isDark
+                                  ? "bg-emerald-500/20 border-emerald-500/50"
+                                  : "bg-emerald-50 border-emerald-300"
+                                : isDark
+                                  ? "bg-slate-800/60 border-slate-700 hover:border-emerald-500/40"
+                                  : "bg-slate-50 border-slate-200 hover:border-emerald-300"
+                            }`}
+                          >
+                            <p
+                              className={`text-3xl font-bold leading-none ${
+                                selected
+                                  ? isDark
+                                    ? "text-emerald-200"
+                                    : "text-emerald-800"
+                                  : isDark
+                                    ? "text-slate-100"
+                                    : "text-slate-800"
+                              }`}
+                            >
+                              {number}
+                            </p>
+                            <p
+                              className={`mt-2 text-sm ${
+                                selected
+                                  ? isDark
+                                    ? "text-emerald-300"
+                                    : "text-emerald-700"
+                                  : isDark
+                                    ? "text-slate-400"
+                                    : "text-slate-500"
+                              }`}
+                            >
+                              Available
+                            </p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

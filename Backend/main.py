@@ -223,6 +223,7 @@ def get_rooms(
 # ============ SCHEMAS PARA RESERVA DE INVITADOS ============
 class GuestReservationCreate(BaseModel):
     room_id: UUID
+    room_number: Optional[str] = None
     check_in_date: date_type
     check_out_date: date_type
     adults: int
@@ -266,6 +267,32 @@ def calculate_pricing(room_price: Decimal, nights: int) -> dict:
         "service_fee": round(service_fee, 2),
         "total_amount": round(total, 2)
     }
+
+
+ROOM_NUMBER_TAG = "room_number::"
+
+
+def build_special_requests(special_requests: Optional[str], room_number: Optional[str]) -> str:
+    notes = (special_requests or "").strip()
+    number = (room_number or "").strip()
+    if not number:
+        return notes
+    return f"{ROOM_NUMBER_TAG}{number}\n{notes}" if notes else f"{ROOM_NUMBER_TAG}{number}"
+
+
+def split_special_requests(raw_special_requests: Optional[str]) -> tuple[Optional[str], str]:
+    raw = (raw_special_requests or "").strip()
+    if not raw:
+        return None, ""
+
+    lines = raw.splitlines()
+    first_line = lines[0].strip()
+    if first_line.lower().startswith(ROOM_NUMBER_TAG):
+        room_number = first_line.split("::", 1)[1].strip() if "::" in first_line else ""
+        clean_notes = "\n".join(lines[1:]).strip()
+        return (room_number or None), clean_notes
+
+    return None, raw
 
 
 # ============ ENDPOINT PARA RESERVA DE INVITADOS (SIN AUTENTICACIÓN) ============
@@ -330,7 +357,10 @@ def create_guest_reservation(
         adults=reservation.adults,
         children=reservation.children,
         status=ReservationStatus.pending,
-        special_requests=reservation.special_requests,
+        special_requests=build_special_requests(
+            reservation.special_requests,
+            reservation.room_number
+        ),
         subtotal=pricing['subtotal'],
         taxes=pricing['taxes'],
         service_fee=pricing['service_fee'],
@@ -664,12 +694,16 @@ def update_reservation(
     if not reservation:
         raise HTTPException(status_code=404, detail="Reservation not found")
 
+    current_room_number, current_notes = split_special_requests(reservation.special_requests)
+
     if "check_in_date" in payload:
         reservation.check_in_date = payload["check_in_date"]
     if "check_out_date" in payload:
         reservation.check_out_date = payload["check_out_date"]
-    if "special_requests" in payload:
-        reservation.special_requests = payload["special_requests"]
+
+    next_room_number = payload.get("room_number", current_room_number)
+    next_notes = payload.get("special_requests", current_notes)
+    reservation.special_requests = build_special_requests(next_notes, next_room_number)
 
     db.commit()
     db.refresh(reservation)
@@ -704,6 +738,7 @@ def get_reservations(
     for r in result["data"]:
         guest = db.query(Guest).filter(Guest.id == r.guest_id).first()
         room  = db.query(Room).filter(Room.id == r.room_id).first()
+        room_number, clean_notes = split_special_requests(r.special_requests)
         enriched.append({
             "id":               str(r.id),
             "guest_id":         str(r.guest_id),
@@ -711,7 +746,7 @@ def get_reservations(
             "guest_name":       f"{guest.first_name} {guest.last_name}" if guest else "—",
             "email":            guest.email if guest else "",
             "phone":            guest.phone if guest else "",
-            "room_number":      room.name if room else "—",
+            "room_number":      room_number or (room.name if room else "—"),
             "room_type":        room.slug if room else "—",
             "check_in_date":    str(r.check_in_date),
             "check_out_date":   str(r.check_out_date),
@@ -719,7 +754,7 @@ def get_reservations(
             "total_price":      float(r.total_amount) if r.total_amount else 0,
             "adults":           r.adults,
             "children":         r.children,
-            "special_requests": r.special_requests or "",
+            "special_requests": clean_notes,
         })
 
     return {"data": enriched, "total": result["total"], "page": result["page"], "limit": result["limit"]}
@@ -759,7 +794,10 @@ def create_reservation_admin(
         adults=reservation.adults,
         children=reservation.children,
         status=ReservationStatus.confirmed,
-        special_requests=reservation.special_requests,
+        special_requests=build_special_requests(
+            reservation.special_requests,
+            reservation.room_number
+        ),
         subtotal=pricing["subtotal"],
         taxes=pricing["taxes"],
         service_fee=pricing["service_fee"],
@@ -773,7 +811,7 @@ def create_reservation_admin(
     return {
         "id": str(new_res.id),
         "guest_name": f"{guest.first_name} {guest.last_name}",
-        "room_name": room.name,
+        "room_name": reservation.room_number or room.name,
         "check_in_date": str(new_res.check_in_date),
         "check_out_date": str(new_res.check_out_date),
         "total_amount": float(new_res.total_amount),
