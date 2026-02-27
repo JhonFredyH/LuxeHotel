@@ -1,222 +1,161 @@
-import React, { useState, useEffect } from "react";
-import { Users, UserPlus, UserCheck, UserX } from "lucide-react";
-import GuestModal from "./modal/GuestModal";
+import React, { useState, useEffect, useCallback } from "react";
+import { Users, Mail } from "lucide-react";
 import GuestDetailModal from "./modal/GuestDetailModal";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const PAGE_SIZE = 5;
 
-const kpiCards = [
-  {
-    title: "TOTAL GUESTS",
-    value: "1,234",
-    icon: Users,
-    light: "bg-white border-2 border-blue-200 shadow-sm hover:shadow-md",
-    dark: "bg-gradient-to-br from-blue-500/20 to-blue-600/10 border border-blue-500/30",
-    iconWrap: "bg-blue-500/20",
-    iconColor: "text-blue-600",
-  },
-  {
-    title: "NEW THIS MONTH",
-    value: "87",
-    icon: UserPlus,
-    light: "bg-white border-2 border-emerald-200 shadow-sm hover:shadow-md",
-    dark: "bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 border border-emerald-500/30",
-    iconWrap: "bg-emerald-500/20",
-    iconColor: "text-emerald-600",
-  },
-  {
-    title: "ACTIVE",
-    value: "456",
-    icon: UserCheck,
-    light: "bg-white border-2 border-purple-200 shadow-sm hover:shadow-md",
-    dark: "bg-gradient-to-br from-purple-500/20 to-purple-600/10 border border-purple-500/30",
-    iconWrap: "bg-purple-500/20",
-    iconColor: "text-purple-600",
-  },
-  {
-    title: "INACTIVE",
-    value: "123",
-    icon: UserX,
-    light: "bg-white border-2 border-amber-200 shadow-sm hover:shadow-md",
-    dark: "bg-gradient-to-br from-amber-500/20 to-amber-600/10 border border-amber-500/30",
-    iconWrap: "bg-amber-500/20",
-    iconColor: "text-amber-600",
-  },
-];
+const token   = () => localStorage.getItem("token");
+const authHdr = () => ({ Authorization: `Bearer ${token()}`, "Content-Type": "application/json" });
 
-const GuestsPage = ({ theme }) => {
-  const [guestModalOpen, setGuestModalOpen] = useState(false);
-  const [detailModalOpen, setDetailModalOpen] = useState(false);
-  const [selectedGuest, setSelectedGuest] = useState(null);
-  const [guests, setGuests] = useState([]);
-  const [loadingGuests, setLoadingGuests] = useState(true);
-  const [fetchError, setFetchError] = useState(null);
-
+const GuestsPage = ({ theme, searchQuery = "" }) => {
   const isDark = theme.pageText.includes("text-white");
 
-  // ── Cargar guests desde la API ──────────────────────────
-  useEffect(() => {
-    const fetchGuests = async () => {
-      setLoadingGuests(true);
-      setFetchError(null);
-      try {
-        const res = await fetch(`${API_URL}/guests`);
-        if (!res.ok) throw new Error(`Error ${res.status}`);
-        const data = await res.json();
-        // El endpoint devuelve { data: [...], total, page, limit }
-        setGuests(data.data ?? data);
-      } catch (err) {
-        setFetchError(err.message);
-      } finally {
-        setLoadingGuests(false);
-      }
-    };
-    fetchGuests();
+  const [guests, setGuests]               = useState([]);
+  const [total, setTotal]                 = useState(0);
+  const [page, setPage]                   = useState(1);
+  const [loading, setLoading]             = useState(true);
+  const [error, setError]                 = useState(null);
+  const [detailOpen, setDetailOpen]       = useState(false);
+  const [selectedGuest, setSelectedGuest] = useState(null);
+  const [inviting, setInviting]           = useState(null);
+
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+
+  const fetchGuests = useCallback(async (currentPage, search) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams({
+        page:  currentPage,
+        limit: PAGE_SIZE,
+        ...(search ? { search } : {}),
+      });
+      const res  = await fetch(`${API_URL}/guests?${params}`, { headers: authHdr() });
+      if (!res.ok) throw new Error(`Error ${res.status}`);
+      const data = await res.json();
+      setGuests(data.data ?? []);
+      setTotal(data.total ?? 0);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  // ── Handlers ────────────────────────────────────────────
-  const handleCreateGuest = () => {
-    setSelectedGuest(null);
-    setGuestModalOpen(true);
-  };
+  // Single effect handles both page navigation and search changes
+  useEffect(() => {
+    fetchGuests(page, searchQuery);
+  }, [page, searchQuery, fetchGuests]); 
+
+  // Reset to page 1 when search query changes
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery]);
 
   const handleViewDetails = (guest) => {
     setSelectedGuest(guest);
-    setDetailModalOpen(true);
+    setDetailOpen(true);
   };
 
   const handleEditGuest = (guest) => {
-    setDetailModalOpen(false);
+    setDetailOpen(false);
     setSelectedGuest(guest);
-    setGuestModalOpen(true);
-  };
-
-  // Recibe el guest guardado que devuelve el backend
-  const handleSubmitGuest = (savedGuest) => {
-    if (selectedGuest) {
-      // Actualizar en la lista
-      setGuests((prev) =>
-        prev.map((g) => (g.id === savedGuest.id ? savedGuest : g))
-      );
-    } else {
-      // Agregar al inicio de la lista
-      setGuests((prev) => [savedGuest, ...prev]);
-    }
   };
 
   const handleDeleteGuest = async (guestId) => {
-  try {
-    const res = await fetch(`${API_URL}/guests/${guestId}`, {
-      method: "DELETE",
-    });
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      alert(data.detail || `Error ${res.status} al eliminar el guest`);
-      return;
+    try {
+      const res = await fetch(`${API_URL}/guests/${guestId}`, {
+        method: "DELETE",
+        headers: authHdr(),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.detail || `Error ${res.status}`);
+        return;
+      }
+      setDetailOpen(false);
+      fetchGuests(page, searchQuery);
+    } catch {
+      alert("Connection error while deleting guest.");
     }
+  };
 
-    setGuests((prev) => prev.filter((g) => g.id !== guestId));
-  } catch {
-    alert("Error de conexión al eliminar el guest");
-  }
-};
+  // Invite guest to register — placeholder until email endpoint exists
+  const handleInvite = async (e, guest) => {
+    e.stopPropagation();
+    setInviting(guest.id);
+    await new Promise((r) => setTimeout(r, 800)); // replace with real API call
+    alert(`Invitation sent to ${guest.email}`);
+    setInviting(null);
+  };
+
+  const goTo = (p) => {
+    if (p < 1 || p > totalPages) return;
+    setPage(p);
+  };
+
+  const pageNumbers = () => {
+    const pages = [];
+    for (let i = Math.max(1, page - 1); i <= Math.min(totalPages, page + 1); i++) {
+      pages.push(i);
+    }
+    return pages;
+  };
+
+  const cellCls = "px-4 py-3 text-sm";
+  const thCls   = `px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide ${isDark ? "text-slate-400" : "text-slate-500"}`;
 
   return (
     <section className={`max-w-7xl mx-auto ${theme.pageText}`}>
+
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 md:gap-6 mb-6 md:mb-8">
-        <div>
-          <h1 className="font-light leading-tight text-[clamp(1.35rem,1.1rem+1.2vw,2rem)]">
-            Guests
-          </h1>
-          <p className={`mt-1 text-[clamp(0.8rem,0.74rem+0.24vw,0.95rem)] ${theme.pageSub}`}>
-            Manage guest information and history.
-          </p>
-        </div>
-        <button
-          onClick={handleCreateGuest}
-          className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg transition-all font-medium shadow-sm hover:shadow-md text-[clamp(0.82rem,0.78rem+0.22vw,0.95rem)]"
-        >
-          + New Guest
-        </button>
+      <div className="mb-6 md:mb-8">
+        <h1 className="font-light leading-tight text-[clamp(1.35rem,1.1rem+1.2vw,2rem)]">Guests</h1>
+        <p className={`mt-1 text-[clamp(0.8rem,0.74rem+0.24vw,0.95rem)] ${theme.pageSub}`}>
+          Guest directory — click any row to view details and reservation history.
+        </p>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-5 mb-6 md:mb-8">
-        {kpiCards.map((card) => {
-          const IconComponent = card.icon;
-          return (
-            <article
-              key={card.title}
-              className={`rounded-xl p-4 sm:p-5 md:p-6 transition-all hover:scale-[1.01] ${
-                isDark ? card.dark : card.light
-              }`}
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className={`font-bold mb-1 ${card.iconColor} text-[clamp(1.45rem,1.2rem+1vw,2rem)]`}>
-                    {card.value}
-                  </p>
-                  <p className={`font-medium text-[clamp(0.78rem,0.72rem+0.2vw,0.9rem)] ${isDark ? "text-slate-300" : "text-slate-600"}`}>
-                    {card.title}
-                  </p>
-                </div>
-                <div className={`w-10 h-10 rounded-lg ${card.iconWrap} flex items-center justify-center`}>
-                  <IconComponent className={`w-5 h-5 ${card.iconColor}`} />
-                </div>
-              </div>
-            </article>
-          );
-        })}
-      </div>
-
-      {/* Guests Table */}
-      <div
-        className={`rounded-xl overflow-hidden ${
-          isDark
-            ? "bg-slate-800/50 border border-slate-700"
-            : "bg-white border border-slate-200 shadow-sm"
-        }`}
-      >
-        <div className={`px-4 sm:px-5 py-4 border-b ${isDark ? "border-slate-700" : "border-slate-200"}`}>
-          <h2 className="font-semibold text-[clamp(1rem,0.9rem+0.45vw,1.25rem)]">
-            All Guests
-          </h2>
-        </div>
-
-        {/* Loading */}
-        {loadingGuests && (
-          <div className="flex items-center justify-center py-16">
-            <svg className="animate-spin h-6 w-6 text-blue-500" viewBox="0 0 24 24" fill="none">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-            </svg>
-            <span className={`ml-3 text-sm ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-              Loading guests...
+      {/* Summary bar */}
+      <div className={`flex items-center gap-3 mb-6 px-4 py-3 rounded-xl border ${isDark ? "bg-slate-800/50 border-slate-700" : "bg-white border-slate-200 shadow-sm"}`}>
+        <Users className={`w-5 h-5 ${isDark ? "text-slate-400" : "text-slate-500"}`} />
+        {loading
+          ? <span className={`text-sm ${isDark ? "text-slate-400" : "text-slate-500"}`}>Loading…</span>
+          : <span className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+              <strong>{total}</strong> guest{total !== 1 ? "s" : ""} registered
+              {searchQuery && <span className="ml-1 text-blue-500">· filtering by "{searchQuery}"</span>}
             </span>
+        }
+      </div>
+
+      {/* Table card */}
+      <div className={`rounded-xl overflow-hidden ${isDark ? "bg-slate-800/50 border border-slate-700" : "bg-white border border-slate-200 shadow-sm"}`}>
+
+        {loading && (
+          <div className="flex items-center justify-center py-20 gap-3">
+            <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            <span className={`text-sm ${isDark ? "text-slate-400" : "text-slate-500"}`}>Loading guests…</span>
           </div>
         )}
 
-        {/* Error */}
-        {fetchError && !loadingGuests && (
-          <div className="flex items-center justify-center py-16">
-            <p className="text-sm text-red-500">⚠️ {fetchError}</p>
+        {error && !loading && (
+          <div className="flex items-center justify-center py-20">
+            <p className="text-sm text-red-500">⚠️ {error}</p>
           </div>
         )}
 
-        {/* Empty */}
-        {!loadingGuests && !fetchError && guests.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 gap-2">
+        {!loading && !error && guests.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-20 gap-3">
             <Users className={`w-10 h-10 ${isDark ? "text-slate-600" : "text-slate-300"}`} />
             <p className={`text-sm ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-              No guests yet. Create your first guest!
+              {searchQuery ? `No guests found for "${searchQuery}"` : "No guests registered yet."}
             </p>
           </div>
         )}
 
-        {/* Mobile Cards */}
-        {!loadingGuests && !fetchError && guests.length > 0 && (
+        {/* Mobile cards */}
+        {!loading && !error && guests.length > 0 && (
           <div className="block md:hidden p-4 space-y-3">
             {guests.map((guest) => (
               <div
@@ -228,38 +167,39 @@ const GuestsPage = ({ theme }) => {
                     : "bg-white border-slate-200 hover:border-slate-300 shadow-sm"
                 }`}
               >
-                <div className="flex items-start justify-between mb-2">
+                <div className="flex items-start justify-between">
                   <div>
-                    <p className="font-semibold text-sm">
-                      {guest.first_name} {guest.last_name}
-                    </p>
-                    <p className={`text-xs mt-1 ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-                      {guest.email}
-                    </p>
+                    <p className="font-semibold text-sm">{guest.first_name} {guest.last_name}</p>
+                    <p className={`text-xs mt-1 ${isDark ? "text-slate-400" : "text-slate-500"}`}>{guest.email}</p>
+                    <p className={`text-xs mt-1 ${isDark ? "text-slate-400" : "text-slate-500"}`}>📞 {guest.phone || "—"}</p>
                   </div>
-                </div>
-                <div className={`text-xs space-y-1 ${isDark ? "text-slate-400" : "text-slate-600"}`}>
-                  <p>📞 {guest.phone}</p>
-                  <p>📍 {guest.city} {guest.country ? `· ${guest.country}` : ""}</p>
+                  {!guest.password_hash && (
+                    <button
+                      onClick={(e) => handleInvite(e, guest)}
+                      disabled={inviting === guest.id}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 transition-colors disabled:opacity-50"
+                    >
+                      <Mail className="w-3 h-3" />
+                      Invite
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
           </div>
         )}
 
-        {/* Desktop Table */}
-        {!loadingGuests && !fetchError && guests.length > 0 && (
+        {/* Desktop table */}
+        {!loading && !error && guests.length > 0 && (
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full">
-              <thead className={`text-xs font-medium ${isDark ? "bg-slate-800/50" : "bg-slate-50"}`}>
+              <thead className={isDark ? "bg-slate-800/70" : "bg-slate-50"}>
                 <tr>
-                  <th className={`px-4 py-3 text-left ${isDark ? "text-slate-400" : "text-slate-600"}`}>Guest</th>
-                  <th className={`px-4 py-3 text-left ${isDark ? "text-slate-400" : "text-slate-600"}`}>Email</th>
-                  <th className={`px-4 py-3 text-left ${isDark ? "text-slate-400" : "text-slate-600"}`}>Phone</th>
-                  <th className={`px-4 py-3 text-left ${isDark ? "text-slate-400" : "text-slate-600"}`}>Document</th>
-                  <th className={`px-4 py-3 text-left ${isDark ? "text-slate-400" : "text-slate-600"}`}>Location</th>
-                  <th className={`px-4 py-3 text-left ${isDark ? "text-slate-400" : "text-slate-600"}`}>Registered</th>
-                  <th className={`px-4 py-3 text-left ${isDark ? "text-slate-400" : "text-slate-600"}`}>Status</th>
+                  <th className={thCls}>Guest</th>
+                  <th className={thCls}>Email</th>
+                  <th className={thCls}>Phone</th>
+                  <th className={thCls}>Joined</th>
+                  <th className={thCls}>Account</th>
                 </tr>
               </thead>
               <tbody className={`divide-y ${isDark ? "divide-slate-700" : "divide-slate-100"}`}>
@@ -267,45 +207,47 @@ const GuestsPage = ({ theme }) => {
                   <tr
                     key={guest.id}
                     onClick={() => handleViewDetails(guest)}
-                    className={`cursor-pointer transition-colors ${
-                      isDark ? "hover:bg-slate-800/50" : "hover:bg-slate-50"
-                    }`}
+                    className={`cursor-pointer transition-colors ${isDark ? "hover:bg-slate-700/50" : "hover:bg-slate-50"}`}
                   >
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-sm">
-                        {guest.first_name} {guest.last_name}
-                      </p>
+                    <td className={cellCls}>
+                      <p className="font-medium">{guest.first_name} {guest.last_name}</p>
                     </td>
-                    <td className="px-4 py-3 text-sm">{guest.email}</td>
-                    <td className={`px-4 py-3 text-sm ${isDark ? "text-slate-300" : "text-slate-700"}`}>
-                      {guest.phone}
+
+                    <td className={`${cellCls} ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+                      {guest.email}
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="text-sm">
-                        <p>{guest.document_type}</p>
-                        <p className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-                          {guest.document_number}
-                        </p>
-                      </div>
+
+                    <td className={`${cellCls} ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+                      {guest.phone || "—"}
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="text-sm">
-                        <p>{guest.city}</p>
-                        <p className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-                          {guest.country}
-                        </p>
-                      </div>
+
+                    <td className={`${cellCls} text-xs ${isDark ? "text-slate-400" : "text-slate-400"}`}>
+                      {new Date(guest.created_at).toLocaleDateString("en-US", {
+                        month: "short", day: "numeric", year: "numeric",
+                      })}
                     </td>
-                    <td className={`px-4 py-3 text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-                      {new Date(guest.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={() => handleViewDetails(guest)}
-                        className="px-3 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 border border-emerald-200 hover:bg-emerald-200 transition-colors"
-                      >
-                        Active
-                      </button>
+
+                    {/* Registered = has password. No account = show Invite button */}
+                    <td className={cellCls} onClick={(e) => e.stopPropagation()}>
+                      {guest.password_hash ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 border border-emerald-200">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                          Registered
+                        </span>
+                      ) : (
+                        <button
+                          onClick={(e) => handleInvite(e, guest)}
+                          disabled={inviting === guest.id}
+                          title="Send account invitation email"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 transition-colors disabled:opacity-50"
+                        >
+                          {inviting === guest.id
+                            ? <span className="w-3 h-3 border border-blue-500 border-t-transparent rounded-full animate-spin" />
+                            : <Mail className="w-3 h-3" />
+                          }
+                          Invite
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -313,20 +255,66 @@ const GuestsPage = ({ theme }) => {
             </table>
           </div>
         )}
+
+        {/* Pagination */}
+        {!loading && !error && totalPages > 1 && (
+          <div className={`flex items-center justify-between px-4 py-3 border-t ${isDark ? "border-slate-700" : "border-slate-200"}`}>
+            <p className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+              Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} of {total}
+            </p>
+
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => goTo(page - 1)}
+                disabled={page === 1}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${isDark ? "hover:bg-slate-700 text-slate-300" : "hover:bg-slate-100 text-slate-600"}`}
+              >
+                ← Prev
+              </button>
+
+              {page > 2 && (
+                <>
+                  <button onClick={() => goTo(1)} className={`w-8 h-8 rounded-lg text-xs font-medium transition-colors ${isDark ? "hover:bg-slate-700 text-slate-300" : "hover:bg-slate-100 text-slate-600"}`}>1</button>
+                  {page > 3 && <span className={`text-xs px-1 ${isDark ? "text-slate-500" : "text-slate-400"}`}>…</span>}
+                </>
+              )}
+
+              {pageNumbers().map((p) => (
+                <button
+                  key={p}
+                  onClick={() => goTo(p)}
+                  className={`w-8 h-8 rounded-lg text-xs font-medium transition-colors ${
+                    p === page
+                      ? "bg-blue-600 text-white"
+                      : isDark ? "hover:bg-slate-700 text-slate-300" : "hover:bg-slate-100 text-slate-600"
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+
+              {page < totalPages - 1 && (
+                <>
+                  {page < totalPages - 2 && <span className={`text-xs px-1 ${isDark ? "text-slate-500" : "text-slate-400"}`}>…</span>}
+                  <button onClick={() => goTo(totalPages)} className={`w-8 h-8 rounded-lg text-xs font-medium transition-colors ${isDark ? "hover:bg-slate-700 text-slate-300" : "hover:bg-slate-100 text-slate-600"}`}>{totalPages}</button>
+                </>
+              )}
+
+              <button
+                onClick={() => goTo(page + 1)}
+                disabled={page === totalPages}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${isDark ? "hover:bg-slate-700 text-slate-300" : "hover:bg-slate-100 text-slate-600"}`}
+              >
+                Next →
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Modals */}
-      <GuestModal
-        isOpen={guestModalOpen}
-        onClose={() => setGuestModalOpen(false)}
-        isDark={isDark}
-        guest={selectedGuest}
-        onSubmit={handleSubmitGuest}
-      />
-
       <GuestDetailModal
-        isOpen={detailModalOpen}
-        onClose={() => setDetailModalOpen(false)}
+        isOpen={detailOpen}
+        onClose={() => setDetailOpen(false)}
         guest={selectedGuest}
         theme={theme}
         onEdit={handleEditGuest}

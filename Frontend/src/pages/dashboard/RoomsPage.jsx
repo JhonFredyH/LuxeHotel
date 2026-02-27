@@ -61,7 +61,7 @@ const RoomsPage = ({ theme }) => {
     }
   };
 
-  // ── Filtrado por floor ─────────────────────────────────────
+ 
   const filteredRooms =
     selectedFloor === "All"
       ? rooms

@@ -142,10 +142,6 @@ const ReservationsPage = ({ theme }) => {
       alert("Please select check-in and check-out dates");
       return;
     }
-    if (!formData.roomNumber) {
-      alert("Please select a room number");
-      return;
-    }
     try {
       const nameParts = (formData.guestName ?? "").trim().split(" ");
       const firstName = nameParts[0] ?? "Guest";

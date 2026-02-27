@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { validateField } from "../components/utils/contactValidation";
-
 import penthouse_3 from "../assets/imagenes/room/pentHouse_3.png";
 import gmail from "../assets/imagenes/icon/google.svg";
 import apple from "../assets/imagenes/icon/apple.png";
@@ -25,13 +24,13 @@ const Login = () => {
   const [activeTab, setActiveTab] = useState("guest");
   const [focusedField, setFocusedField] = useState(null);
 
-  // ── Login state ─────────────────────────────────────
+  // Login state
   const [loginData, setLoginData] = useState(INITIAL_LOGIN_DATA);
   const [loginErrors, setLoginErrors] = useState({});
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginApiError, setLoginApiError] = useState(null);
 
-  // ── Register state ───────────────────────────────────
+  // Register state
   const [registerData, setRegisterData] = useState(INITIAL_REGISTER_DATA);
   const [registerErrors, setRegisterErrors] = useState({});
   const [registerLoading, setRegisterLoading] = useState(false);
@@ -44,7 +43,7 @@ const Login = () => {
   const shouldLabelFloat = (fieldName, fieldValue) =>
     fieldValue?.trim?.()?.length > 0 || focusedField === fieldName;
 
-  // ── Login handlers ───────────────────────────────────
+  // Login handlers
   const handleLoginChange = (e) => {
     const { name, value } = e.target;
     setLoginData((prev) => ({ ...prev, [name]: value }));
@@ -82,7 +81,7 @@ const Login = () => {
     };
 
     try {
-      // 1 Intentar como guest
+      // 1. Try guest login first
       const guestRes = await fetch(`${API_URL}/guests/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -94,11 +93,12 @@ const Login = () => {
         localStorage.setItem("guest_token", data.access_token);
         localStorage.setItem("user_role", "guest");
         setLoginData(INITIAL_LOGIN_DATA);
-        window.location.href = "/dashboard"; 
+        // FIX: guests go to their reservations, not admin dashboard
+        window.location.href = "/guest/reservations";
         return;
       }
 
-      // 2 Si falla, intentar como admin
+      // 2. Fallback: try admin login
       const adminRes = await fetch(`${API_URL}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -119,27 +119,46 @@ const Login = () => {
     }
   };
 
-  // ── Register handlers ────────────────────────────────
+  // Register handlers
   const handleRegisterChange = (e) => {
     const { name, value } = e.target;
     setRegisterData((prev) => ({ ...prev, [name]: value }));
     if (registerErrors[name])
       setRegisterErrors((prev) => ({ ...prev, [name]: null }));
+
+    // FIX: re-validate confirmPassword live when password changes
+    if (name === "password" && registerData.confirmPassword) {
+      const match = value === registerData.confirmPassword
+        ? ""
+        : "Passwords do not match.";
+      setRegisterErrors((prev) => ({ ...prev, confirmPassword: match }));
+    }
   };
 
   const handleRegisterBlur = (name, value) => {
+    setFocusedField(null);
+
+    // FIX: validate confirmPassword on blur instead of skipping it
+    if (name === "confirmPassword") {
+      if (!value?.trim()) {
+        setRegisterErrors((prev) => ({ ...prev, confirmPassword: "Please confirm your password." }));
+      } else if (value !== registerData.password) {
+        setRegisterErrors((prev) => ({ ...prev, confirmPassword: "Passwords do not match." }));
+      } else {
+        setRegisterErrors((prev) => ({ ...prev, confirmPassword: "" }));
+      }
+      return;
+    }
+
     const key =
       name === "email"
         ? "registerEmail"
         : name === "password"
           ? "registerPassword"
-          : name === "confirmPassword"
-            ? "skip"
-            : name;
-    if (key === "skip") return;
+          : name;
+
     const error = validateField(key, value);
     setRegisterErrors((prev) => ({ ...prev, [name]: error }));
-    setFocusedField(null);
   };
 
   const validateAll = () => {
@@ -225,7 +244,6 @@ const Login = () => {
     },
   };
 
-  // ── Clases reutilizables ─────────────────────────────
   const inputCls = (field, errMap) =>
     `w-full bg-transparent border-b-2 py-3 px-1 outline-none transition ${
       errMap[field]
@@ -250,19 +268,8 @@ const Login = () => {
       <span className="relative z-10 flex items-center justify-center gap-2">
         {loading && (
           <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-            <circle
-              className="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="4"
-            />
-            <path
-              className="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8v8z"
-            />
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
           </svg>
         )}
         {loading ? loadingText : text}
@@ -274,7 +281,8 @@ const Login = () => {
     <div className="min-h-screen flex items-center justify-center bg-[#c5c5c5]">
       <div className="max-w-6xl mx-auto px-4 mt-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 bg-[#fdfcf0] rounded-lg overflow-hidden shadow-lg">
-          {/* Imagen */}
+
+          {/* Left image */}
           <div className="w-full">
             <img
               src={penthouse_3}
@@ -283,9 +291,10 @@ const Login = () => {
             />
           </div>
 
-          {/* Panel derecho */}
+          {/* Right panel */}
           <div className="flex flex-col overflow-y-auto max-h-[760px]">
-            {/* Tabs */}
+
+            {/* Tab switcher */}
             <div className="relative mt-10 px-8">
               <div className="flex justify-center gap-20">
                 {["guest", "staff"].map((tab) => (
@@ -320,7 +329,6 @@ const Login = () => {
               </div>
             </div>
 
-            {/* Title */}
             <div className="flex flex-col justify-center mt-8">
               <h1 className="text-center text-3xl font-semibold">
                 {tabConfig[activeTab].title}
@@ -330,26 +338,18 @@ const Login = () => {
               </p>
             </div>
 
-            {/* ── GUEST LOGIN ── */}
+            {/* Login form */}
             {activeTab === "guest" && (
               <div className="px-8 mt-6 pb-8">
                 {loginApiError && (
                   <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                    <p
-                      className="text-sm text-red-600 text-center"
-                      role="alert"
-                    >
+                    <p className="text-sm text-red-600 text-center" role="alert">
                       {loginApiError}
                     </p>
                   </div>
                 )}
 
-                <form
-                  onSubmit={handleLoginSubmit}
-                  noValidate
-                  className="space-y-6 mt-4"
-                >
-                  {/* Email */}
+                <form onSubmit={handleLoginSubmit} noValidate className="space-y-6 mt-4">
                   <div className="relative min-h-[70px]">
                     <input
                       type="email"
@@ -362,23 +362,14 @@ const Login = () => {
                       aria-invalid={!!loginErrors.email}
                       className={inputCls("login-email", loginErrors)}
                     />
-                    <label
-                      className={labelCls(
-                        "login-email",
-                        loginData.email,
-                        loginErrors,
-                      )}
-                    >
+                    <label className={labelCls("login-email", loginData.email, loginErrors)}>
                       Email Address
                     </label>
                     {loginErrors.email && (
-                      <p role="alert" className="mt-1 text-xs text-red-600">
-                        {loginErrors.email}
-                      </p>
+                      <p role="alert" className="mt-1 text-xs text-red-600">{loginErrors.email}</p>
                     )}
                   </div>
 
-                  {/* Password */}
                   <div className="relative min-h-[70px]">
                     <input
                       type="password"
@@ -386,48 +377,28 @@ const Login = () => {
                       value={loginData.password}
                       onChange={handleLoginChange}
                       onFocus={() => setFocusedField("login-password")}
-                      onBlur={(e) =>
-                        handleLoginBlur("password", e.target.value)
-                      }
+                      onBlur={(e) => handleLoginBlur("password", e.target.value)}
                       required
                       aria-invalid={!!loginErrors.password}
                       className={inputCls("login-password", loginErrors)}
                     />
-                    <label
-                      className={labelCls(
-                        "login-password",
-                        loginData.password,
-                        loginErrors,
-                      )}
-                    >
+                    <label className={labelCls("login-password", loginData.password, loginErrors)}>
                       Password
                     </label>
                     {loginErrors.password && (
-                      <p role="alert" className="mt-1 text-xs text-red-600">
-                        {loginErrors.password}
-                      </p>
+                      <p role="alert" className="mt-1 text-xs text-red-600">{loginErrors.password}</p>
                     )}
                   </div>
 
                   <div className="flex justify-end">
-                    <a
-                      href="#"
-                      className="text-sm text-[#8b7355] hover:text-[#6d5a43] font-medium transition-colors"
-                    >
+                    <a href="#" className="text-sm text-[#8b7355] hover:text-[#6d5a43] font-medium transition-colors">
                       Forgot password?
                     </a>
                   </div>
 
                   <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id="keepSignedIn"
-                      className="w-4 h-4 text-[#8b7355] border-gray-300 rounded"
-                    />
-                    <label
-                      htmlFor="keepSignedIn"
-                      className="ml-2 text-sm text-gray-600"
-                    >
+                    <input type="checkbox" id="keepSignedIn" className="w-4 h-4 text-[#8b7355] border-gray-300 rounded" />
+                    <label htmlFor="keepSignedIn" className="ml-2 text-sm text-gray-600">
                       Keep me signed in for 30 days
                     </label>
                   </div>
@@ -437,9 +408,7 @@ const Login = () => {
 
                 <div className="flex items-center justify-center my-6">
                   <div className="flex-1 border-t border-gray-300"></div>
-                  <span className="mx-4 text-sm text-gray-500">
-                    OR CONTINUE WITH
-                  </span>
+                  <span className="mx-4 text-sm text-gray-500">OR CONTINUE WITH</span>
                   <div className="flex-1 border-t border-gray-300"></div>
                 </div>
 
@@ -454,14 +423,8 @@ const Login = () => {
                       className="flex items-center justify-center gap-2 border border-gray-300 hover:border-[#C9A961] px-8 py-3 rounded-lg transition-all flex-1 relative overflow-hidden group"
                     >
                       <span className="absolute top-0 left-0 w-0 h-full bg-[#C9A961] transition-all duration-300 ease-out group-hover:w-full"></span>
-                      <img
-                        src={src}
-                        alt={alt}
-                        className="w-5 h-5 relative z-10"
-                      />
-                      <span className="relative z-10 group-hover:text-white transition-colors duration-300">
-                        {label}
-                      </span>
+                      <img src={src} alt={alt} className="w-5 h-5 relative z-10" />
+                      <span className="relative z-10 group-hover:text-white transition-colors duration-300">{label}</span>
                     </button>
                   ))}
                 </div>
@@ -480,22 +443,17 @@ const Login = () => {
               </div>
             )}
 
-            {/* ── REGISTER ── */}
+            {/* Register form */}
             {activeTab === "staff" && (
               <div className="px-8 mt-6 pb-8">
                 {registerSuccess && (
                   <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-md text-center">
-                    <p className="text-emerald-700 font-medium">
-                      ✓ Registration successful!
-                    </p>
+                    <p className="text-emerald-700 font-medium">✓ Registration successful!</p>
                     <p className="text-sm text-emerald-600 mt-1">
                       Your profile has been created. You can now sign in.
                     </p>
                     <button
-                      onClick={() => {
-                        setActiveTab("guest");
-                        setRegisterSuccess(false);
-                      }}
+                      onClick={() => { setActiveTab("guest"); setRegisterSuccess(false); }}
                       className="mt-3 text-sm font-semibold text-[#2C5F5D] hover:text-[#C9A961] transition-colors"
                     >
                       Go to login →
@@ -505,26 +463,18 @@ const Login = () => {
 
                 {registerError && (
                   <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                    <p
-                      className="text-sm text-red-600 text-center"
-                      role="alert"
-                    >
-                      {registerError}
-                    </p>
+                    <p className="text-sm text-red-600 text-center" role="alert">{registerError}</p>
                   </div>
                 )}
 
                 {!registerSuccess && (
-                  <form
-                    onSubmit={handleRegisterSubmit}
-                    noValidate
-                    className="space-y-5"
-                  >
-                    {/* First + Last Name */}
+                  <form onSubmit={handleRegisterSubmit} noValidate className="space-y-5">
+
+                    {/* First + Last name */}
                     <div className="grid grid-cols-2 gap-4">
                       {[
                         { name: "firstName", label: "First Name *" },
-                        { name: "lastName", label: "Last Name *" },
+                        { name: "lastName",  label: "Last Name *"  },
                       ].map(({ name, label }) => (
                         <div key={name} className="relative min-h-[70px]">
                           <input
@@ -533,29 +483,16 @@ const Login = () => {
                             value={registerData[name]}
                             onChange={handleRegisterChange}
                             onFocus={() => setFocusedField(name)}
-                            onBlur={(e) =>
-                              handleRegisterBlur(name, e.target.value)
-                            }
+                            onBlur={(e) => handleRegisterBlur(name, e.target.value)}
                             required
                             aria-invalid={!!registerErrors[name]}
                             className={inputCls(name, registerErrors)}
                           />
-                          <label
-                            className={labelCls(
-                              name,
-                              registerData[name],
-                              registerErrors,
-                            )}
-                          >
+                          <label className={labelCls(name, registerData[name], registerErrors)}>
                             {label}
                           </label>
                           {registerErrors[name] && (
-                            <p
-                              role="alert"
-                              className="mt-1 text-xs text-red-600"
-                            >
-                              {registerErrors[name]}
-                            </p>
+                            <p role="alert" className="mt-1 text-xs text-red-600">{registerErrors[name]}</p>
                           )}
                         </div>
                       ))}
@@ -569,27 +506,60 @@ const Login = () => {
                         value={registerData.email}
                         onChange={handleRegisterChange}
                         onFocus={() => setFocusedField("reg-email")}
-                        onBlur={(e) =>
-                          handleRegisterBlur("email", e.target.value)
-                        }
+                        onBlur={(e) => handleRegisterBlur("email", e.target.value)}
                         required
                         aria-invalid={!!registerErrors.email}
                         className={inputCls("email", registerErrors)}
                       />
-                      <label
-                        className={labelCls(
-                          "reg-email",
-                          registerData.email,
-                          registerErrors,
-                        )}
-                      >
+                      <label className={labelCls("reg-email", registerData.email, registerErrors)}>
                         Email Address *
                       </label>
                       {registerErrors.email && (
-                        <p role="alert" className="mt-1 text-xs text-red-600">
-                          {registerErrors.email}
-                        </p>
+                        <p role="alert" className="mt-1 text-xs text-red-600">{registerErrors.email}</p>
                       )}
+                    </div>
+
+                    {/* Password + Confirm */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="relative min-h-[70px]">
+                        <input
+                          type="password"
+                          name="password"
+                          value={registerData.password}
+                          onChange={handleRegisterChange}
+                          onFocus={() => setFocusedField("reg-password")}
+                          onBlur={(e) => handleRegisterBlur("password", e.target.value)}
+                          required
+                          aria-invalid={!!registerErrors.password}
+                          className={inputCls("password", registerErrors)}
+                        />
+                        <label className={labelCls("reg-password", registerData.password, registerErrors)}>
+                          Password *
+                        </label>
+                        {registerErrors.password && (
+                          <p role="alert" className="mt-1 text-xs text-red-600">{registerErrors.password}</p>
+                        )}
+                      </div>
+
+                      <div className="relative min-h-[70px]">
+                        <input
+                          type="password"
+                          name="confirmPassword"
+                          value={registerData.confirmPassword}
+                          onChange={handleRegisterChange}
+                          onFocus={() => setFocusedField("confirmPassword")}
+                          onBlur={(e) => handleRegisterBlur("confirmPassword", e.target.value)}
+                          required
+                          aria-invalid={!!registerErrors.confirmPassword}
+                          className={inputCls("confirmPassword", registerErrors)}
+                        />
+                        <label className={labelCls("confirmPassword", registerData.confirmPassword, registerErrors)}>
+                          Confirm Password *
+                        </label>
+                        {registerErrors.confirmPassword && (
+                          <p role="alert" className="mt-1 text-xs text-red-600">{registerErrors.confirmPassword}</p>
+                        )}
+                      </div>
                     </div>
 
                     {/* Phone */}
@@ -600,30 +570,20 @@ const Login = () => {
                         value={registerData.phone}
                         onChange={handleRegisterChange}
                         onFocus={() => setFocusedField("phone")}
-                        onBlur={(e) =>
-                          handleRegisterBlur("phone", e.target.value)
-                        }
+                        onBlur={(e) => handleRegisterBlur("phone", e.target.value)}
                         required
                         aria-invalid={!!registerErrors.phone}
                         className={inputCls("phone", registerErrors)}
                       />
-                      <label
-                        className={labelCls(
-                          "phone",
-                          registerData.phone,
-                          registerErrors,
-                        )}
-                      >
+                      <label className={labelCls("phone", registerData.phone, registerErrors)}>
                         Phone *
                       </label>
                       {registerErrors.phone && (
-                        <p role="alert" className="mt-1 text-xs text-red-600">
-                          {registerErrors.phone}
-                        </p>
+                        <p role="alert" className="mt-1 text-xs text-red-600">{registerErrors.phone}</p>
                       )}
                     </div>
 
-                    {/* Document Type + Number */}
+                    {/* Document type + number */}
                     <div className="grid grid-cols-2 gap-4">
                       <div className="relative min-h-[70px]">
                         <select
@@ -634,18 +594,15 @@ const Login = () => {
                           onBlur={() => setFocusedField(null)}
                           className={`${inputCls("documentType", registerErrors)} text-gray-700`}
                         >
-                          {["ID", "Passport", "Driver License", "Other"].map(
-                            (t) => (
-                              <option key={t} value={t}>
-                                {t}
-                              </option>
-                            ),
-                          )}
+                          {["ID", "Passport", "Driver License", "Other"].map((t) => (
+                            <option key={t} value={t}>{t}</option>
+                          ))}
                         </select>
                         <label className="-top-3 text-xs absolute left-1 text-gray-500 pointer-events-none">
                           Document Type
                         </label>
                       </div>
+
                       <div className="relative min-h-[70px]">
                         <input
                           type="text"
@@ -653,30 +610,20 @@ const Login = () => {
                           value={registerData.document}
                           onChange={handleRegisterChange}
                           onFocus={() => setFocusedField("document")}
-                          onBlur={(e) =>
-                            handleRegisterBlur("document", e.target.value)
-                          }
+                          onBlur={(e) => handleRegisterBlur("document", e.target.value)}
                           aria-invalid={!!registerErrors.document}
                           className={inputCls("document", registerErrors)}
                         />
-                        <label
-                          className={labelCls(
-                            "document",
-                            registerData.document,
-                            registerErrors,
-                          )}
-                        >
+                        <label className={labelCls("document", registerData.document, registerErrors)}>
                           Document Number
                         </label>
                         {registerErrors.document && (
-                          <p role="alert" className="mt-1 text-xs text-red-600">
-                            {registerErrors.document}
-                          </p>
+                          <p role="alert" className="mt-1 text-xs text-red-600">{registerErrors.document}</p>
                         )}
                       </div>
                     </div>
 
-                    {/* Date of Birth */}
+                    {/* Date of birth */}
                     <div className="relative min-h-[70px]">
                       <input
                         type="date"
@@ -692,71 +639,7 @@ const Login = () => {
                       </label>
                     </div>
 
-                    {/* Password */}
-                    <div className="relative min-h-[70px]">
-                      <input
-                        type="password"
-                        name="password"
-                        value={registerData.password}
-                        onChange={handleRegisterChange}
-                        onFocus={() => setFocusedField("reg-password")}
-                        onBlur={(e) =>
-                          handleRegisterBlur("password", e.target.value)
-                        }
-                        required
-                        aria-invalid={!!registerErrors.password}
-                        className={inputCls("password", registerErrors)}
-                      />
-                      <label
-                        className={labelCls(
-                          "reg-password",
-                          registerData.password,
-                          registerErrors,
-                        )}
-                      >
-                        Password *
-                      </label>
-                      {registerErrors.password && (
-                        <p role="alert" className="mt-1 text-xs text-red-600">
-                          {registerErrors.password}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Confirm Password */}
-                    <div className="relative min-h-[70px]">
-                      <input
-                        type="password"
-                        name="confirmPassword"
-                        value={registerData.confirmPassword}
-                        onChange={handleRegisterChange}
-                        onFocus={() => setFocusedField("confirmPassword")}
-                        onBlur={() => setFocusedField(null)}
-                        required
-                        aria-invalid={!!registerErrors.confirmPassword}
-                        className={inputCls("confirmPassword", registerErrors)}
-                      />
-                      <label
-                        className={labelCls(
-                          "confirmPassword",
-                          registerData.confirmPassword,
-                          registerErrors,
-                        )}
-                      >
-                        Confirm Password *
-                      </label>
-                      {registerErrors.confirmPassword && (
-                        <p role="alert" className="mt-1 text-xs text-red-600">
-                          {registerErrors.confirmPassword}
-                        </p>
-                      )}
-                    </div>
-
-                    {submitBtn(
-                      registerLoading,
-                      "CREATE ACCOUNT",
-                      "REGISTERING...",
-                    )}
+                    {submitBtn(registerLoading, "CREATE ACCOUNT", "REGISTERING...")}
 
                     <p className="text-center text-sm text-gray-600">
                       Already registered?{" "}

@@ -51,7 +51,7 @@ const authHdr  = () => ({ Authorization: `Bearer ${token()}`, "Content-Type": "a
 
 const RoomModal = ({ isOpen, onClose, room, isDark, onEdit, onDelete }) => {
   const [activeTab, setActiveTab]       = useState("info");
-  const [units, setUnits]               = useState([]);           // room_units desde BD
+  const [units, setUnits]               = useState([]);           
   const [loadingUnits, setLoadingUnits] = useState(false);
   const [savingUnit, setSavingUnit]     = useState(null);         // uuid del unit que se está guardando
   const [openMenu, setOpenMenu]         = useState(null);         // uuid del unit con menú abierto
@@ -152,22 +152,7 @@ const RoomModal = ({ isOpen, onClose, room, isDark, onEdit, onDelete }) => {
     }
   };
 
-  // ── Eliminar unidad ──────────────────────────────────────
-  const handleDeleteUnit = async (unit) => {
-    if (!window.confirm(`Delete unit ${unit.unit_number}?`)) return;
-    setUnits((prev) => prev.filter((u) => u.id !== unit.id));
-    try {
-      await fetch(`${API}/rooms-admin/units/${unit.id}`, {
-        method: "DELETE",
-        headers: authHdr(),
-      });
-    } catch {
-      fetchUnits(); // recargar si falla
-      setErrorMsg("Could not delete unit.");
-    }
-  };
-
-  // ── Derivados ────────────────────────────────────────────
+  
   const amenities    = Array.isArray(room.amenities) ? room.amenities : [];
   const overallStatus = room.status || "available";
   const statusLabel  = STATUS_OPTIONS.find((s) => s.value === overallStatus)?.label || overallStatus;
@@ -184,9 +169,7 @@ const RoomModal = ({ isOpen, onClose, room, isDark, onEdit, onDelete }) => {
       <div
         className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200"
         onClick={onClose}
-      />
-
-      {/* Modal — más alto que el original */}
+      />      
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div
           className={`w-full max-w-3xl max-h-[92vh] rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col ${
@@ -194,7 +177,7 @@ const RoomModal = ({ isOpen, onClose, room, isDark, onEdit, onDelete }) => {
           }`}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* ── Header ────────────────────────────────────── */}
+          {/* Header */}
           <div className={`px-6 py-4 border-b flex-shrink-0 ${isDark ? "bg-slate-800/50 border-slate-700/50" : "bg-gradient-to-r from-slate-50 to-slate-100/50 border-slate-200"}`}>
             <div className="flex items-center justify-between">
               <div className="flex items-baseline gap-3 flex-wrap">
@@ -234,24 +217,7 @@ const RoomModal = ({ isOpen, onClose, room, isDark, onEdit, onDelete }) => {
             )}
           </div>
 
-          {/* ── Tabs ──────────────────────────────────────── */}
-          <div className={`px-6 border-b flex-shrink-0 ${isDark ? "border-slate-700/50" : "border-slate-200"}`}>
-            <div className="flex gap-8">
-              {["info", "history", "actions"].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`py-3 text-sm font-medium border-b-2 capitalize transition-colors ${
-                    activeTab === tab
-                      ? "border-emerald-500 text-emerald-500"
-                      : `border-transparent ${isDark ? "text-slate-400 hover:text-slate-300" : "text-slate-500 hover:text-slate-700"}`
-                  }`}
-                >
-                  {tab === "info" ? "Information" : tab.charAt(0).toUpperCase() + tab.slice(1)}
-                </button>
-              ))}
-            </div>
-          </div>
+         
 
           {/* ── Contenido scrollable ──────────────────────── */}
           <div className="px-6 py-5 overflow-y-auto flex-1">
@@ -289,7 +255,7 @@ const RoomModal = ({ isOpen, onClose, room, isDark, onEdit, onDelete }) => {
                   </div>
                 </div>
 
-                {/* ── Room units ─────────────────────────── */}
+                {/* Room units */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-sm font-semibold">
@@ -349,13 +315,7 @@ const RoomModal = ({ isOpen, onClose, room, isDark, onEdit, onDelete }) => {
 
                                 <div className="flex items-center gap-1 flex-shrink-0">
                                   {/* Botón eliminar */}
-                                  <button
-                                    onClick={() => handleDeleteUnit(unit)}
-                                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors opacity-40 hover:opacity-100 ${isDark ? "hover:bg-red-500/20 text-red-400" : "hover:bg-red-50 text-red-500"}`}
-                                    title="Delete unit"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
+                                 
 
                                   {/* Menú de estado */}
                                   <div className="relative">
@@ -437,24 +397,7 @@ const RoomModal = ({ isOpen, onClose, room, isDark, onEdit, onDelete }) => {
               </div>
             )}
 
-            {/* ════ TAB: HISTORY ════ */}
-            {activeTab === "history" && (
-              <div className="space-y-3">
-                <div className={`rounded-lg p-4 ${isDark ? "bg-slate-800/50" : "bg-slate-50"}`}>
-                  <p className="text-sm font-semibold mb-3">Recent activity</p>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className={isDark ? "text-slate-400" : "text-slate-600"}>Check-out:</span>
-                      <span className="font-medium">{room.checkOut || "No record"}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className={isDark ? "text-slate-400" : "text-slate-600"}>Guest:</span>
-                      <span className="font-medium">{room.guest || "None"}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+            
 
             {/* ════ TAB: ACTIONS ════ */}
             {activeTab === "actions" && (
@@ -475,7 +418,7 @@ const RoomModal = ({ isOpen, onClose, room, isDark, onEdit, onDelete }) => {
             )}
           </div>
 
-          {/* ── Footer ────────────────────────────────────── */}
+          {/*  Footer */}
           <div className={`px-6 py-3 border-t flex-shrink-0 flex justify-end ${isDark ? "border-slate-700/50 bg-slate-800/30" : "border-slate-200 bg-slate-50"}`}>
             <button
               onClick={onClose}
