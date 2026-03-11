@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Users, Mail } from "lucide-react";
 import GuestDetailModal from "./modal/GuestDetailModal";
+import { useToast } from "../../components/ui/ToastProvider";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 const PAGE_SIZE = 5;
@@ -19,6 +20,7 @@ const GuestsPage = ({ theme, searchQuery = "" }) => {
   const [detailOpen, setDetailOpen]       = useState(false);
   const [selectedGuest, setSelectedGuest] = useState(null);
   const [inviting, setInviting]           = useState(null);
+  const { showToast } = useToast();
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
@@ -71,13 +73,21 @@ const GuestsPage = ({ theme, searchQuery = "" }) => {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        alert(data.detail || `Error ${res.status}`);
+        showToast({
+          type: "error",
+          title: "Delete failed",
+          message: data.detail || `Error ${res.status}`,
+        });
         return;
       }
       setDetailOpen(false);
       fetchGuests(page, searchQuery);
     } catch {
-      alert("Connection error while deleting guest.");
+      showToast({
+        type: "error",
+        title: "Connection error",
+        message: "Connection error while deleting guest.",
+      });
     }
   };
 
@@ -86,7 +96,11 @@ const GuestsPage = ({ theme, searchQuery = "" }) => {
     e.stopPropagation();
     setInviting(guest.id);
     await new Promise((r) => setTimeout(r, 800)); // replace with real API call
-    alert(`Invitation sent to ${guest.email}`);
+    showToast({
+      type: "success",
+      title: "Invitation sent",
+      message: `Invitation sent to ${guest.email}`,
+    });
     setInviting(null);
   };
 

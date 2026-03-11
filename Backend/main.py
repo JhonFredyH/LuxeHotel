@@ -30,7 +30,10 @@ app = FastAPI(title="LuxeHotel API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -72,6 +75,28 @@ def normalize_date(value) -> date_type:
     raise HTTPException(status_code=400, detail="Invalid date value")
 
 
+def check_room_overlap(
+    db: Session,
+    room_id,
+    check_in_date: date_type,
+    check_out_date: date_type,
+    exclude_reservation_id: Optional[UUID] = None,
+) -> bool:
+    """
+    Devuelve True si existe alguna reserva activa que se solape con las fechas dadas.
+    Usado para habitaciones sin room_units configuradas (ej. Presidential Penthouse).
+    """
+    query = db.query(Reservation).filter(
+        Reservation.room_id == room_id,
+        Reservation.status.notin_([ReservationStatus.cancelled, ReservationStatus.checked_out]),
+        Reservation.check_in_date  < check_out_date,   # nueva entra antes que existente sale
+        Reservation.check_out_date > check_in_date,    # nueva sale después que existente entra
+    )
+    if exclude_reservation_id:
+        query = query.filter(Reservation.id != exclude_reservation_id)
+    return query.first() is not None
+
+
 def find_available_room_number(
     db: Session,
     room_id,
@@ -80,9 +105,10 @@ def find_available_room_number(
     requested_room_number: Optional[str] = None,
     exclude_reservation_id: Optional[UUID] = None,
 ) -> Optional[str]:
-    check_in_date = normalize_date(check_in_date)
+    check_in_date  = normalize_date(check_in_date)
     check_out_date = normalize_date(check_out_date)
-    requested = (requested_room_number or "").strip() or None
+    requested      = (requested_room_number or "").strip() or None
+
     units = (
         db.query(RoomUnit)
         .filter(RoomUnit.room_id == room_id)
@@ -90,18 +116,30 @@ def find_available_room_number(
         .all()
     )
 
-    # If this room type has no physical units configured, keep current behavior.
+    # ── Sin unidades configuradas (habitación única como Penthouse) ──────────
+    # Antes: simplemente retornaba requested sin validar nada  ← BUG
+    # Ahora: verifica solapamiento real antes de permitir la reserva
     if not units:
-        return requested
+        if check_room_overlap(db, room_id, check_in_date, check_out_date, exclude_reservation_id):
+            raise HTTPException(
+                status_code=409,
+                detail="This room is already booked for the selected dates. "
+                       "Please choose different dates."
+            )
+        return requested  # OK, no hay conflicto
 
+    # ── Con unidades configuradas (ej. Garden View con unidades 101, 102…) ──
     valid_numbers = {u.unit_number for u in units}
     if requested and requested not in valid_numbers:
-        raise HTTPException(status_code=400, detail=f"Room number '{requested}' does not belong to this room type")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Room number '{requested}' does not belong to this room type"
+        )
 
     overlaps_query = db.query(Reservation).filter(
         Reservation.room_id == room_id,
-        Reservation.status != ReservationStatus.cancelled,
-        Reservation.check_in_date < check_out_date,
+        Reservation.status.notin_([ReservationStatus.cancelled, ReservationStatus.checked_out]),
+        Reservation.check_in_date  < check_out_date,
         Reservation.check_out_date > check_in_date,
     )
     if exclude_reservation_id:
@@ -116,26 +154,27 @@ def find_available_room_number(
     if requested:
         requested_unit = next((u for u in units if u.unit_number == requested), None)
         if requested in booked_numbers:
-            raise HTTPException(status_code=409, detail=f"Room number '{requested}' is not available for selected dates")
+            raise HTTPException(
+                status_code=409,
+                detail=f"Room {requested} is not available for the selected dates."
+            )
         if requested_unit and requested_unit.status == "maintenance":
-            raise HTTPException(status_code=409, detail=f"Room number '{requested}' is under maintenance")
+            raise HTTPException(
+                status_code=409,
+                detail=f"Room {requested} is currently under maintenance."
+            )
         return requested
 
-    preferred = [
-        u.unit_number
-        for u in units
-        if u.unit_number not in booked_numbers and u.status == "available"
-    ]
-    fallback = [
-        u.unit_number
-        for u in units
-        if u.unit_number not in booked_numbers and u.status != "maintenance"
-    ]
+    # Auto-asignar la mejor unidad disponible
+    preferred = [u.unit_number for u in units if u.unit_number not in booked_numbers and u.status == "available"]
+    fallback  = [u.unit_number for u in units if u.unit_number not in booked_numbers and u.status != "maintenance"]
 
     selected = preferred[0] if preferred else (fallback[0] if fallback else None)
     if not selected:
-        raise HTTPException(status_code=409, detail="No room numbers available for selected dates")
-
+        raise HTTPException(
+            status_code=409,
+            detail="No rooms available for the selected dates. Please choose different dates."
+        )
     return selected
 
 def calculate_nights(check_in: date_type, check_out: date_type) -> int:
@@ -294,6 +333,74 @@ def get_rooms(
     result = paginate(query, page, limit)
     for room in result['data']:
         room.__dict__['amenities'] = [a.code for a in room.amenities]
+        
+    return result
+
+
+
+@app.get("/rooms/{room_id}/availability")
+def get_room_availability(
+    room_id: UUID,
+    check_in:  Optional[date_type] = Query(None),
+    check_out: Optional[date_type] = Query(None),
+    db: Session = Depends(get_db)
+):
+    """
+    Devuelve las fechas bloqueadas de una habitación (reservas activas futuras).
+    El frontend usa 'blocked' para deshabilitar fechas en el calendario.
+
+    Parámetros opcionales ?check_in=YYYY-MM-DD&check_out=YYYY-MM-DD:
+      → Verifica si esas fechas específicas están disponibles y qué unidad asignaría.
+    """
+    room = db.query(Room).filter(Room.id == room_id).first()
+    if not room:
+        raise HTTPException(status_code=404, detail="Room not found")
+
+    today = date_type.today()
+
+    # Reservas activas desde hoy en adelante
+    active = db.query(Reservation).filter(
+        Reservation.room_id == room_id,
+        Reservation.status.notin_([ReservationStatus.cancelled, ReservationStatus.checked_out]),
+        Reservation.check_out_date > today,
+    ).all()
+
+    blocked = [
+        {
+            "check_in":    str(r.check_in_date),
+            "check_out":   str(r.check_out_date),
+            "room_number": split_special_requests(r.special_requests)[0],
+        }
+        for r in active
+    ]
+
+    units = db.query(RoomUnit).filter(RoomUnit.room_id == room_id).all()
+
+    result = {
+        "room_id":   str(room_id),
+        "room_name": room.name,
+        "has_units": len(units) > 0,
+        "units":     [{"unit_number": u.unit_number, "status": u.status} for u in units],
+        "blocked":   blocked,
+    }
+
+    # Si se pasan fechas concretas, evalúa disponibilidad en ese rango
+    if check_in and check_out:
+        if check_out <= check_in:
+            raise HTTPException(status_code=400, detail="check_out must be after check_in")
+        try:
+            suggested = find_available_room_number(
+                db=db,
+                room_id=room_id,
+                check_in_date=check_in,
+                check_out_date=check_out,
+            )
+            result["available"]      = True
+            result["suggested_unit"] = suggested
+        except HTTPException:
+            result["available"]      = False
+            result["suggested_unit"] = None
+
     return result
 
 
@@ -331,8 +438,7 @@ def get_guests(
     return paginate(query, page, limit)
 
 
-# Fixed order: /guests/register and /guests/login MUST come before /guests/{guest_id}
-# otherwise FastAPI treats "register" and "login" as a guest_id UUID and never reaches these endpoints
+
 
 @app.post("/guests/register", response_model=GuestResponse, status_code=201)
 def register_guest(payload: GuestRegister, db: Session = Depends(get_db)):

@@ -1,15 +1,18 @@
 import { useSearchParams } from "react-router-dom";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRooms } from "../context/RoomContext";
 import RoomCard from "../components/room/RoomCard";
 import { ChevronLeft, Filter, X } from "lucide-react";
 import { BRAND_CONFIG } from "../components/navbar/navbarConfig";
+import { computeAvailableUnits, useAvailability } from "../hooks/useAvailability";
 
 const CheckRates = () => {
   const [params] = useSearchParams();
   const [sortBy, setSortBy] = useState("all");
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
+  const [availabilityByRoom, setAvailabilityByRoom] = useState({});
   const { rooms, loading } = useRooms();
+  const { getRoomAvailability } = useAvailability();
 
   const parsedCheckIn = params.get("checkIn");
   const parsedCheckOut = params.get("checkOut");
@@ -29,9 +32,80 @@ const CheckRates = () => {
 
   const nights = Math.max(1, (checkOut - checkIn) / (1000 * 60 * 60 * 24));
 
-  const availableRooms = rooms.filter(
-    (room) => room.capacity.maxGuests >= adults + children,
+  const availableRooms = useMemo(
+    () => rooms.filter((room) => room.capacity.maxGuests >= adults + children),
+    [rooms, adults, children],
   );
+
+  const apiCheckIn = parsedCheckIn ? parsedCheckIn.slice(0, 10) : "";
+  const apiCheckOut = parsedCheckOut ? parsedCheckOut.slice(0, 10) : "";
+
+  useEffect(() => {
+    if (!apiCheckIn || !apiCheckOut || availableRooms.length === 0) {
+      setAvailabilityByRoom({});
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadAvailability = async () => {
+      const loadingMap = Object.fromEntries(
+        availableRooms.map((room) => [
+          room.uuid,
+          { loading: true, available: false, suggestedUnit: null, error: null },
+        ]),
+      );
+      setAvailabilityByRoom(loadingMap);
+
+      const checks = await Promise.all(
+        availableRooms.map(async (room) => {
+          try {
+            const response = await getRoomAvailability({
+              roomId: room.uuid,
+              checkIn: apiCheckIn,
+              checkOut: apiCheckOut,
+            });
+            return [
+              room.uuid,
+              {
+                loading: false,
+                available: Boolean(response.data?.available),
+                suggestedUnit: response.data?.suggested_unit ?? null,
+                availableUnits: computeAvailableUnits(
+                  response.data,
+                  apiCheckIn,
+                  apiCheckOut,
+                ),
+                error: null,
+              },
+            ];
+          } catch (error) {
+            console.error(`Availability check failed for ${room.uuid}:`, error);
+            return [
+              room.uuid,
+              {
+                loading: false,
+                available: false,
+                suggestedUnit: null,
+                availableUnits: 0,
+                error: "Availability check failed",
+              },
+            ];
+          }
+        }),
+      );
+
+      if (!cancelled) {
+        setAvailabilityByRoom(Object.fromEntries(checks));
+      }
+    };
+
+    loadAvailability();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [apiCheckIn, apiCheckOut, availableRooms]);
 
   const sortedRooms = useMemo(() => {
     const roomsList = [...availableRooms];
@@ -237,6 +311,7 @@ const CheckRates = () => {
             variant="compare"
             nights={nights}
             reservationData={reservationData}
+            availability={availabilityByRoom[room.uuid]}
           />
         ))}
       </div>

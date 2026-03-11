@@ -28,7 +28,8 @@ export const RoomProvider = ({ children }) => {
       const response = await api.get("/rooms");
 
       // Mapear datos del backend al formato del frontend
-      const mappedRooms = response.data.data.map((room) => ({
+      const data = Array.isArray(response.data?.data) ? response.data.data : [];
+      const mappedRooms = data.map((room) => ({
         id: room.slug,
         uuid: room.id,
         name: room.name,

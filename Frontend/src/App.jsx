@@ -11,6 +11,7 @@ import ScrollToTop from "./components/ScrollToTop";
 import DashBoard from "./pages/dashboard/DashboardHome";
 import authService from "./services/authService";
 import GuestDashboard from "./pages/GuestDashboard";
+import { ToastProvider } from "./components/ui/ToastProvider";
 
 const PrivateRoute = ({ children, requiredRole }) => {
   const isAuthenticated = authService.isAuthenticated();
@@ -24,7 +25,7 @@ const PrivateRoute = ({ children, requiredRole }) => {
 
 const App = () => {
   return (
-    <>
+    <ToastProvider>
       <ScrollToTop />
 
       <Routes>
@@ -64,7 +65,7 @@ const App = () => {
           <Route path="/dash" element={<Navigate to="/guest/reservations" />} />
         </Route>
       </Routes>
-    </>
+    </ToastProvider>
   );
 };
 

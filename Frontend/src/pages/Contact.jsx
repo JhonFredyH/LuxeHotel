@@ -1,8 +1,10 @@
 import { MapPinPlus, Phone, Clock } from "lucide-react";
 import { useContactForm } from "../components/utils/useContactForm";
 import { useState } from "react";
+import { useToast } from "../components/ui/ToastProvider";
 
 const Contact = () => {
+  const { showToast } = useToast();
   const {
     formData,
     errors,
@@ -16,7 +18,11 @@ const Contact = () => {
 
   const onSubmit = (data) => {
     console.log("Form submitted:", data);
-    alert("✅ Message sent successfully!");
+    showToast({
+      type: "success",
+      title: "Message sent",
+      message: "Your message was sent successfully.",
+    });
     resetForm();
   };
 

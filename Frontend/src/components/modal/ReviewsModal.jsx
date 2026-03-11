@@ -113,7 +113,7 @@ const ReviewsModal = ({ isOpen, onClose, roomName, reviews, rating, totalReviews
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes fadeIn {
           from { opacity: 0; }
           to { opacity: 1; }

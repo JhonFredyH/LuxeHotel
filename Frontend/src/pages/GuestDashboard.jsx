@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Calendar, Users, X, Moon, ChevronLeft, Plus } from "lucide-react";
 import { BRAND_CONFIG } from "../components/navbar/navbarConfig";
+import { useToast } from "../components/ui/ToastProvider";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -31,6 +32,7 @@ const GuestDashboard = () => {
   const [error, setError]                     = useState(null);
   const [cancelling, setCancelling]           = useState(null);
   const [guest, setGuest]                     = useState({ name: "", email: "" });
+  const { showToast } = useToast();
 
   // Read guest info from JWT — supports guest_token (registered guests) and token (users table guests)
   useEffect(() => {
@@ -82,7 +84,11 @@ const GuestDashboard = () => {
         prev.map((r) => r.id === reservationId ? { ...r, status: "cancelled" } : r)
       );
     } catch (err) {
-      alert(err.message);
+      showToast({
+        type: "error",
+        title: "Cancellation failed",
+        message: err.message || "Could not cancel reservation.",
+      });
     } finally {
       setCancelling(null);
     }

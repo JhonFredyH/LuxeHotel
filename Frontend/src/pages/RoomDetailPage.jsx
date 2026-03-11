@@ -1,15 +1,19 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useRooms } from "../context/RoomContext";
 import { BRAND_CONFIG } from "../components/navbar/navbarConfig";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Users, Maximize2, Eye, ShieldCheck, ChevronLeft } from "lucide-react";
 import { roomAmenities } from "../data/roomAmenities";
 import RoomSlider from "../components/RoomSlider";
+import { useToast } from "../components/ui/ToastProvider";
+import { computeAvailableUnits, useAvailability } from "../hooks/useAvailability";
 
 const RoomDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { getRoomBySlug, loading } = useRooms();
+  const { showToast } = useToast();
+  const { getRoomAvailability } = useAvailability();
   const room = getRoomBySlug(id);
 
   // Estado del formulario
@@ -21,18 +25,14 @@ const RoomDetailPage = () => {
   });
 
   const [errors, setErrors] = useState({});
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#fdfcf0] flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-xl font-semibold text-teal-700">
-            Loading room details...
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
+  const [availabilityInfo, setAvailabilityInfo] = useState({
+    checked: false,
+    loading: false,
+    available: null,
+    availableUnits: 0,
+    suggestedUnit: null,
+  });
 
   const roomImages =
     room?.images && room.images.length > 0
@@ -67,22 +67,60 @@ const RoomDetailPage = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
+    if (errors[name] || errors.availability) {
+      setErrors((prev) => ({ ...prev, [name]: "", availability: "" }));
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const validationErrors = validateForm();
 
     if (Object.keys(validationErrors).length === 0) {
-      navigate("/reservation-view", {
-        state: {
-          reservationData: formData,
-          room,
-        },
-      });
+      setIsCheckingAvailability(true);
+      try {
+        const response = await getRoomAvailability({
+          roomId: room.uuid,
+          checkIn: formData.checkIn,
+          checkOut: formData.checkOut,
+        });
+
+        if (!response.data?.available) {
+          setErrors((prev) => ({
+            ...prev,
+            availability:
+              "This room is fully booked for the selected dates. Please choose different dates.",
+          }));
+          showToast({
+            type: "error",
+            title: "Room unavailable",
+            message:
+              "This room is fully booked for the selected dates. Please choose different dates.",
+          });
+          return;
+        }
+
+        navigate("/reservation-view", {
+          state: {
+            reservationData: formData,
+            room,
+          },
+        });
+      } catch (error) {
+        console.error("Availability check failed:", error);
+        setErrors((prev) => ({
+          ...prev,
+          availability:
+            "Could not verify availability right now. Please try again.",
+        }));
+        showToast({
+          type: "error",
+          title: "Availability check failed",
+          message: "Could not verify availability right now. Please try again.",
+        });
+      } finally {
+        setIsCheckingAvailability(false);
+      }
     } else {
       setErrors(validationErrors);
     }
@@ -97,6 +135,83 @@ const RoomDetailPage = () => {
   };
 
   const nights = calculateNights();
+
+  useEffect(() => {
+    if (!room?.uuid || !formData.checkIn || !formData.checkOut) {
+      setAvailabilityInfo({
+        checked: false,
+        loading: false,
+        available: null,
+        availableUnits: 0,
+        suggestedUnit: null,
+      });
+      return;
+    }
+
+    let cancelled = false;
+
+    const checkLiveAvailability = async () => {
+      setAvailabilityInfo((prev) => ({ ...prev, loading: true }));
+      try {
+        const response = await getRoomAvailability({
+          roomId: room.uuid,
+          checkIn: formData.checkIn,
+          checkOut: formData.checkOut,
+        });
+        if (cancelled) return;
+
+        setAvailabilityInfo({
+          checked: true,
+          loading: false,
+          available: Boolean(response.data?.available),
+          availableUnits: computeAvailableUnits(
+            response.data,
+            formData.checkIn,
+            formData.checkOut,
+          ),
+          suggestedUnit: response.data?.suggested_unit ?? null,
+        });
+
+        if (response.data?.available) {
+          setErrors((prev) => ({ ...prev, availability: "" }));
+        } else {
+          setErrors((prev) => ({
+            ...prev,
+            availability:
+              "This room is fully booked for the selected dates. Please choose different dates.",
+          }));
+        }
+      } catch (error) {
+        if (cancelled) return;
+        console.error("Live availability check failed:", error);
+        setAvailabilityInfo({
+          checked: true,
+          loading: false,
+          available: null,
+          availableUnits: 0,
+          suggestedUnit: null,
+        });
+      }
+    };
+
+    checkLiveAvailability();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [room?.uuid, formData.checkIn, formData.checkOut]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#fdfcf0] flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-xl font-semibold text-teal-700">
+            Loading room details...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   {
     /*room does not exist*/
@@ -393,10 +508,57 @@ const RoomDetailPage = () => {
                 {/* Reserve Button */}
                 <button
                   type="submit"
-                  className="w-full py-3 sm:py-4 bg-[#5a8a95] hover:bg-[#4a7885] disabled:bg-gray-300 disabled:cursor-not-allowed text-white uppercase tracking-wider font-semibold rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl text-[clamp(0.875rem,2vw,1rem)]"
+                  disabled={isCheckingAvailability}
+                  className={`w-full py-3 sm:py-4 text-white uppercase tracking-wider font-semibold rounded-lg transition-all duration-300 shadow-lg text-[clamp(0.875rem,2vw,1rem)] ${
+                    isCheckingAvailability
+                      ? "bg-gray-300 cursor-not-allowed"
+                      : errors.availability
+                        ? "bg-red-600 hover:bg-red-700 hover:shadow-xl"
+                        : "bg-[#5a8a95] hover:bg-[#4a7885] hover:shadow-xl"
+                  }`}
                 >
-                  Reserve Now
+                  {isCheckingAvailability
+                    ? "Checking Availability..."
+                    : errors.availability
+                      ? "Not Available"
+                      : "Reserve Now"}
                 </button>
+                {errors.availability && (
+                  <p className="text-red-600 text-center text-sm font-medium">
+                    {errors.availability}
+                  </p>
+                )}
+                {availabilityInfo.loading &&
+                  formData.checkIn &&
+                  formData.checkOut && (
+                    <p className="text-center text-xs text-slate-600 font-medium">
+                      Checking live availability...
+                    </p>
+                  )}
+                {availabilityInfo.checked &&
+                  !availabilityInfo.loading &&
+                  availabilityInfo.available &&
+                  availabilityInfo.availableUnits > 0 && (
+                    <p className="text-center text-xs text-emerald-700 font-medium">
+                      {availabilityInfo.availableUnits}{" "}
+                      {availabilityInfo.availableUnits === 1 ? "unit" : "units"}{" "}
+                      left for selected dates.
+                    </p>
+                  )}
+                {availabilityInfo.checked &&
+                  !availabilityInfo.loading &&
+                  availabilityInfo.suggestedUnit && (
+                    <p className="text-center text-xs text-teal-700 font-medium">
+                      Suggested unit: {availabilityInfo.suggestedUnit}
+                    </p>
+                  )}
+                {availabilityInfo.checked &&
+                  !availabilityInfo.loading &&
+                  availabilityInfo.available === false && (
+                    <p className="text-center text-xs text-red-700 font-medium">
+                      Fully booked for selected dates.
+                    </p>
+                  )}
 
                 {/* Cancellation Policy */}
                 <div className="flex items-start gap-2 sm:gap-3 text-gray-500 bg-[#f9fafb] p-3 sm:p-4 rounded-lg">

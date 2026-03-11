@@ -3,6 +3,7 @@ import { CheckCheck, Clock3, LogIn, LogOut } from "lucide-react";
 import BookingDetailModal from "./modal/BookingDetailModal";
 import ReservationModal from "./modal/ReservationModal";
 import DataTable from "./components/DashboardTable";
+import { useToast } from "../../components/ui/ToastProvider";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -56,6 +57,7 @@ const KPI_CONFIG = [
 
 const ReservationsPage = ({ theme }) => {
   const isDark = theme.pageText.includes("text-white");
+  const { showToast } = useToast();
 
   // ── State ────────────────────────────────────────────────
   const [kpiTotals, setKpiTotals] = useState({
@@ -131,15 +133,27 @@ const ReservationsPage = ({ theme }) => {
 
   const handleSubmitNewReservation = async (formData) => {
     if (!formData.roomId) {
-      alert("Please select a room");
+      showToast({
+        type: "error",
+        title: "Missing room",
+        message: "Please select a room.",
+      });
       return;
     }
     if (!formData.email) {
-      alert("Please enter guest email");
+      showToast({
+        type: "error",
+        title: "Missing email",
+        message: "Please enter guest email.",
+      });
       return;
     }
     if (!formData.checkIn || !formData.checkOut) {
-      alert("Please select check-in and check-out dates");
+      showToast({
+        type: "error",
+        title: "Missing dates",
+        message: "Please select check-in and check-out dates.",
+      });
       return;
     }
     try {
@@ -175,14 +189,28 @@ const ReservationsPage = ({ theme }) => {
         const detail = Array.isArray(err.detail)
           ? err.detail.map((e) => `${e.loc?.join(".")}: ${e.msg}`).join("\n")
           : err.detail || "Error creating reservation";
-        alert(detail);
+        showToast({
+          type: "error",
+          title: "Create reservation failed",
+          message: detail,
+          duration: 6000,
+        });
         return;
       }
 
       setTableKey((k) => k + 1);
       fetchKpiTotals();
+      showToast({
+        type: "success",
+        title: "Reservation created",
+        message: "The reservation was created successfully.",
+      });
     } catch {
-      alert("Connection error");
+      showToast({
+        type: "error",
+        title: "Connection error",
+        message: "Could not create reservation due to connection error.",
+      });
     }
   };
 
@@ -216,13 +244,26 @@ const ReservationsPage = ({ theme }) => {
         },
       );
       if (!res.ok) {
-        alert("Error updating reservation");
+        showToast({
+          type: "error",
+          title: "Update failed",
+          message: "Error updating reservation.",
+        });
         return;
       }
       setTableKey((k) => k + 1);
       fetchKpiTotals();
+      showToast({
+        type: "success",
+        title: "Reservation updated",
+        message: "Reservation updated successfully.",
+      });
     } catch {
-      alert("Connection error");
+      showToast({
+        type: "error",
+        title: "Connection error",
+        message: "Could not update reservation.",
+      });
     }
   };
 
@@ -238,14 +279,27 @@ const ReservationsPage = ({ theme }) => {
         },
       );
       if (!res.ok) {
-        alert("Error performing check-in");
+        showToast({
+          type: "error",
+          title: "Check-in failed",
+          message: "Error performing check-in.",
+        });
         return;
       }
       setDetailModalOpen(false);
       setTableKey((k) => k + 1);
       fetchKpiTotals();
+      showToast({
+        type: "success",
+        title: "Check-in completed",
+        message: "Guest check-in was completed successfully.",
+      });
     } catch {
-      alert("Connection error");
+      showToast({
+        type: "error",
+        title: "Connection error",
+        message: "Could not perform check-in.",
+      });
     }
   };
 
@@ -261,14 +315,27 @@ const ReservationsPage = ({ theme }) => {
         },
       );
       if (!res.ok) {
-        alert("Error performing check-out");
+        showToast({
+          type: "error",
+          title: "Check-out failed",
+          message: "Error performing check-out.",
+        });
         return;
       }
       setDetailModalOpen(false);
       setTableKey((k) => k + 1);
       fetchKpiTotals();
+      showToast({
+        type: "success",
+        title: "Check-out completed",
+        message: "Guest check-out was completed successfully.",
+      });
     } catch {
-      alert("Connection error");
+      showToast({
+        type: "error",
+        title: "Connection error",
+        message: "Could not perform check-out.",
+      });
     }
   };
 
@@ -285,14 +352,27 @@ const ReservationsPage = ({ theme }) => {
         },
       );
       if (!res.ok) {
-        alert("Error cancelling reservation");
+        showToast({
+          type: "error",
+          title: "Cancellation failed",
+          message: "Error cancelling reservation.",
+        });
         return;
       }
       setDetailModalOpen(false);
       setTableKey((k) => k + 1);
       fetchKpiTotals();
+      showToast({
+        type: "success",
+        title: "Reservation cancelled",
+        message: "Reservation cancelled successfully.",
+      });
     } catch {
-      alert("Connection error");
+      showToast({
+        type: "error",
+        title: "Connection error",
+        message: "Could not cancel reservation.",
+      });
     }
   };
 

@@ -3,6 +3,7 @@ import { validateField } from "../components/utils/contactValidation";
 import penthouse_3 from "../assets/imagenes/room/pentHouse_3.png";
 import gmail from "../assets/imagenes/icon/google.svg";
 import apple from "../assets/imagenes/icon/apple.png";
+import { useToast } from "../components/ui/ToastProvider";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -21,6 +22,7 @@ const INITIAL_REGISTER_DATA = {
 const INITIAL_LOGIN_DATA = { email: "", password: "" };
 
 const Login = () => {
+  const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState("guest");
   const [focusedField, setFocusedField] = useState(null);
 
@@ -38,7 +40,11 @@ const Login = () => {
   const [registerSuccess, setRegisterSuccess] = useState(false);
 
   const handleSocialLogin = (provider) =>
-    alert(`Login con ${provider} próximamente`);
+    showToast({
+      type: "info",
+      title: "Coming soon",
+      message: `${provider} login will be available soon.`,
+    });
 
   const shouldLabelFloat = (fieldName, fieldValue) =>
     fieldValue?.trim?.()?.length > 0 || focusedField === fieldName;

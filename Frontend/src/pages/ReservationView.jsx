@@ -14,6 +14,8 @@ import { useReservationForm } from "../components/utils/useReservationForm";
 import { validateField } from "../components/utils/formValidation";
 import { useRooms } from "../context/RoomContext";
 import { createGuestBooking } from "../services/reservationService";
+import { useToast } from "../components/ui/ToastProvider";
+import { useAvailability } from "../hooks/useAvailability";
 
 const currency = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -49,6 +51,8 @@ const ReservationView = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { rooms, loading } = useRooms();
+  const { showToast } = useToast();
+  const { getRoomAvailability } = useAvailability();
   
   const bookingState = location.state ?? {};
   
@@ -137,8 +141,31 @@ const ReservationView = () => {
     try {
       // Validar que las fechas existan
       if (!reservationData.checkIn || !reservationData.checkOut) {
-        alert("Please select check-in and check-out dates");
+        showToast({
+          type: "error",
+          title: "Missing dates",
+          message: "Please select check-in and check-out dates.",
+        });
         setIsSubmitting(false);
+        return;
+      }
+
+      const checkInDate = reservationData.checkIn.slice(0, 10);
+      const checkOutDate = reservationData.checkOut.slice(0, 10);
+
+      const availability = await getRoomAvailability({
+        roomId: selectedRoom.uuid,
+        checkIn: checkInDate,
+        checkOut: checkOutDate,
+      });
+
+      if (!availability.data?.available) {
+        showToast({
+          type: "error",
+          title: "Room unavailable",
+          message:
+            "This room is no longer available for the selected dates. Please choose another room.",
+        });
         return;
       }
 
@@ -163,11 +190,12 @@ const ReservationView = () => {
       if (result.success) {
         console.log("Booking confirmed:", result.data);
 
-        // Mostrar mensaje de éxito
-        alert(`Booking confirmed! 
-Reference: ${result.data.reference_number}
-Total: $${result.data.total_amount}
-Check your email for confirmation.`);
+        showToast({
+          type: "success",
+          title: "Booking confirmed",
+          message: `Reference ${result.data.reference_number}. Total $${result.data.total_amount}.`,
+          duration: 6000,
+        });
         
         // Limpiar el formulario después de la confirmación exitosa
         clearForm();
@@ -178,13 +206,22 @@ Check your email for confirmation.`);
         console.error("Booking failed:", result.error);
         const errorMsg = Array.isArray(result.error)
           ? result.error.map((e) => e.msg || e).join("\n")
-          : JSON.stringify(result.error);
+          : String(result.error);
 
-        alert(`Booking failed:\n${errorMsg}`);
+        showToast({
+          type: "error",
+          title: "Booking failed",
+          message: errorMsg,
+          duration: 6000,
+        });
       }
     } catch (error) {
       console.error("Unexpected error:", error);
-      alert("An unexpected error occurred. Please try again.");
+      showToast({
+        type: "error",
+        title: "Unexpected error",
+        message: "An unexpected error occurred. Please try again.",
+      });
     } finally {
       setIsSubmitting(false);
     }

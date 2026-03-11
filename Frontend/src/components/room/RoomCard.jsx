@@ -4,12 +4,14 @@ import { useNavigate } from "react-router-dom";
 import { getAmenityIcon, getAmenityLabel } from "../../data/AmenitiesIcons";
 import ReviewsModal from "../modal/ReviewsModal";
 import api from "../../services/api";
+import { useToast } from "../ui/ToastProvider";
 
 const RoomCard = ({
   room,
   variant = "premium",
   nights = 3,
   reservationData,
+  availability,
 }) => {
   const {
     name,
@@ -28,9 +30,31 @@ const RoomCard = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [isReviewsModalOpen, setIsReviewsModalOpen] = useState(false);
   const [reviewsData, setReviewsData] = useState([]);
   const [loadingReviews, setLoadingReviews] = useState(false);
+
+  const handleSelectRoom = () => {
+    if (availability?.loading) return;
+
+    if (availability && !availability.available) {
+      showToast({
+        type: "error",
+        title: "Room unavailable",
+        message:
+          "This room cannot be reserved for the selected dates. Choose another room or different dates.",
+      });
+      return;
+    }
+
+    navigate("/reservation-view", {
+      state: {
+        room,
+        reservationData,
+      },
+    });
+  };
 
   const handleOpenReviews = async () => {
     setIsReviewsModalOpen(true);
@@ -363,18 +387,53 @@ const RoomCard = ({
 
             <div>
               <button
-                onClick={() =>
-                  navigate("/reservation-view", {
-                    state: {
-                      room,
-                      reservationData,
-                    },
-                  })
-                }
-                className="w-full bg-teal-600 text-white font-semibold py-3 rounded-lg text-sm hover:bg-teal-700 active:scale-95 transition-all shadow-md hover:shadow-lg mb-3"
+                onClick={handleSelectRoom}
+                disabled={availability?.loading || availability?.error}
+                className={`w-full text-white font-semibold py-3 rounded-lg text-sm transition-all shadow-md mb-3 ${
+                  availability?.loading
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : availability?.error
+                      ? "bg-slate-500 cursor-not-allowed"
+                      : availability && !availability.available
+                        ? "bg-red-600 hover:bg-red-700 active:scale-95 hover:shadow-lg"
+                        : "bg-teal-600 hover:bg-teal-700 active:scale-95 hover:shadow-lg"
+                }`}
               >
-                Select Room
+                {availability?.loading
+                  ? "Checking availability..."
+                  : availability?.error
+                    ? "Availability unavailable"
+                    : availability && !availability.available
+                      ? "Not Available"
+                      : "Select Room"}
               </button>
+
+              {availability?.error && !availability.loading && (
+                <p className="text-center text-xs text-slate-600 font-medium mb-2">
+                  Could not verify availability. Please try again.
+                </p>
+              )}
+
+              {availability && !availability.loading && !availability.available && !availability.error && (
+                <p className="text-center text-xs text-red-700 font-medium mb-2">
+                  Fully booked for selected dates.
+                </p>
+              )}
+
+              {availability?.suggestedUnit && availability.available && (
+                <p className="text-center text-xs text-teal-700 font-medium mb-2">
+                  Available unit: {availability.suggestedUnit}
+                </p>
+              )}
+              {availability?.available &&
+                !availability.loading &&
+                availability.availableUnits > 0 && (
+                  <p className="text-center text-xs text-emerald-700 font-medium mb-2">
+                    {availability.availableUnits}{" "}
+                    {availability.availableUnits === 1 ? "unit" : "units"} left
+                    for selected dates.
+                  </p>
+                )}
 
               <div className="flex items-center justify-center gap-2 text-green-600 font-medium text-xs">
                 <svg
@@ -394,7 +453,7 @@ const RoomCard = ({
           </div>
         </div>
 
-        <style jsx>{`
+        <style>{`
           @keyframes fadeIn {
             from {
               opacity: 0;
