@@ -1,13 +1,32 @@
 # LuxeHotel — Hotel Management System
 
-Sistema completo de gestión hotelera con panel administrativo, reservas en tiempo real, control de habitaciones por unidad individual y sistema de reviews integrado.
+Aplicación web fullstack diseñada para gestionar reservas hoteleras con control de disponibilidad en tiempo real, evitando conflictos de concurrencia y sobreventa (overbooking).
+
+🔗 Demo: (agrega tu link)  
+🔗 Documentación API: http://localhost:8000/docs  
+
 
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.104-009688?style=flat&logo=fastapi)
 ![React](https://img.shields.io/badge/React-18.2-61DAFB?style=flat&logo=react)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-336791?style=flat&logo=postgresql)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat&logo=docker)
 
----
+
+## 🚀 Puntos clave
+
+- Sistema de reservas en tiempo real
+- Prevención de overbooking mediante control de concurrencia
+- Gestión de habitaciones por unidad física (no solo tipos)
+- Sincronización automática de estados con triggers en PostgreSQL
+- Panel administrativo con métricas en vivo (ocupación, ingresos, check-ins)
+
+## ⚙️ Retos técnicos
+
+- Manejo de múltiples reservas simultáneas sin conflictos
+- Evitar condiciones de carrera (race conditions)
+- Mantener consistencia entre backend y base de datos
+- Diseño de modelo relacional escalable
+- Automatización de estados de habitaciones
 
 ## Tabla de contenidos
 
