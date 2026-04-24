@@ -1,0 +1,18 @@
+# Python
+Backend/venv/
+Backend/__pycache__/
+Backend/*.pyc
+Backend/backups/
+Backend/backup.sql
+Backend/backup.utf8.sql
+
+# Variables de entorno
+Backend/.env
+
+# Node
+Frontend/node_modules/
+Frontend/dist/
+
+# Otros
+.DS_Store
+*.log
