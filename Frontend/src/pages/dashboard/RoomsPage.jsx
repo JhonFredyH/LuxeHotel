@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Check, Clock, Wrench, Sparkles } from "lucide-react";
 import RoomModal from "./modal/RoomModal";
 
@@ -33,15 +33,10 @@ const RoomsPage = ({ theme }) => {
   const [selectedRoom, setSelectedRoom] = useState(null);
 
   const token = localStorage.getItem("token");
-  const headers = { Authorization: `Bearer ${token}` };
-
-  useEffect(() => {
-    fetchAll();
-  }, []);
-
-  const fetchAll = async () => {
+  const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const [roomsRes, statsRes, floorsRes] = await Promise.all([
         fetch(`${API}/rooms-admin`, { headers }),
         fetch(`${API}/rooms-admin/stats`, { headers }),
@@ -59,7 +54,11 @@ const RoomsPage = ({ theme }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
 
  
   const filteredRooms =

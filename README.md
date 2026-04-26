@@ -220,47 +220,47 @@ cd luxehotel
 
 ### 2. Set up environment variables
 ```bash
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
+cp Backend/.env.example Backend/.env
+cp Frontend/.env.example Frontend/.env
 ```
 
-### 3. Start the backend with Docker
+### 3. Start the full stack
 ```bash
-cd backend
-docker-compose up -d
+docker compose up --build
 ```
 
 This starts:
 - PostgreSQL on `localhost:5433`
 - API backend on `http://localhost:8000`
+- Frontend on `http://localhost:5173`
 - Swagger docs on `http://localhost:8000/docs`
 
-### 4. Install and run the frontend
+The Docker backend restores `Backend/backup.utf8.sql` automatically on a fresh database and then applies the schema repair script when needed.
+
+### 4. Stop the stack
 ```bash
-cd frontend
-npm install
-npm run dev
+docker compose down
 ```
 
-Frontend available at `http://localhost:5173`
-
-### 5. Run migrations (first time only)
+### 5. Optional Windows helpers
 ```bash
-cd backend
-source venv/bin/activate      # Linux/Mac
-# venv\Scripts\activate       # Windows
-alembic stamp head
+scripts\docker-up.cmd
+scripts\docker-down.cmd
 ```
 
 ---
 
 ## Environment variables
 
-### Backend (`backend/.env`)
+### Backend (`Backend/.env`)
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `DATABASE_URL` | PostgreSQL connection URL | ✅ |
+| `DB_USER` | PostgreSQL username | ✅ |
+| `DB_PASSWORD` | PostgreSQL password | ✅ |
+| `DB_HOST` | PostgreSQL host | ✅ |
+| `DB_PORT` | PostgreSQL port | ✅ |
+| `DB_NAME` | PostgreSQL database name | ✅ |
 | `SECRET_KEY` | Secret key for JWT signing | ✅ |
 | `ALGORITHM` | JWT algorithm (default: HS256) | ❌ |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Token expiration time | ❌ |
@@ -268,7 +268,7 @@ alembic stamp head
 | `CLOUDINARY_API_KEY` | Cloudinary API key | ✅ |
 | `CLOUDINARY_API_SECRET` | Cloudinary API secret | ✅ |
 
-### Frontend (`frontend/.env`)
+### Frontend (`Frontend/.env`)
 
 | Variable | Description | Required |
 |----------|-------------|----------|

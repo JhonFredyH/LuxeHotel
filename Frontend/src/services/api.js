@@ -2,7 +2,7 @@ import axios from 'axios';
 import { emitToast } from '../components/ui/toastBus';
 
 // URL base de tu backend
-const API_URL = 'http://localhost:8000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // Crear instancia de axios configurada
 const api = axios.create({

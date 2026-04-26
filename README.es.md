@@ -220,47 +220,47 @@ cd luxehotel
 
 ### 2. Configurar variables de entorno
 ```bash
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
+cp Backend/.env.example Backend/.env
+cp Frontend/.env.example Frontend/.env
 ```
 
-### 3. Levantar el backend con Docker
+### 3. Levantar todo el stack
 ```bash
-cd backend
-docker-compose up -d
+docker compose up --build
 ```
 
 Esto inicia:
 - PostgreSQL en `localhost:5433`
 - API backend en `http://localhost:8000`
+- Frontend en `http://localhost:5173`
 - Swagger docs en `http://localhost:8000/docs`
 
-### 4. Instalar y correr el frontend
+El backend en Docker restaura `Backend/backup.utf8.sql` automáticamente cuando la base está vacía y luego aplica la reparación de esquema si hace falta.
+
+### 4. Detener el stack
 ```bash
-cd frontend
-npm install
-npm run dev
+docker compose down
 ```
 
-Frontend disponible en `http://localhost:5173`
-
-### 5. Ejecutar migraciones (solo la primera vez)
+### 5. Helpers opcionales para Windows
 ```bash
-cd backend
-source venv/bin/activate      # Linux/Mac
-# venv\Scripts\activate       # Windows
-alembic stamp head
+scripts\docker-up.cmd
+scripts\docker-down.cmd
 ```
 
 ---
 
 ## Variables de entorno
 
-### Backend (`backend/.env`)
+### Backend (`Backend/.env`)
 
 | Variable | Descripción | Requerido |
 |----------|-------------|-----------|
-| `DATABASE_URL` | URL de conexión PostgreSQL | ✅ |
+| `DB_USER` | Usuario de PostgreSQL | ✅ |
+| `DB_PASSWORD` | Contraseña de PostgreSQL | ✅ |
+| `DB_HOST` | Host de PostgreSQL | ✅ |
+| `DB_PORT` | Puerto de PostgreSQL | ✅ |
+| `DB_NAME` | Nombre de la base de datos | ✅ |
 | `SECRET_KEY` | Clave secreta para JWT | ✅ |
 | `ALGORITHM` | Algoritmo JWT (default: HS256) | ❌ |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Expiración del token | ❌ |
@@ -268,7 +268,7 @@ alembic stamp head
 | `CLOUDINARY_API_KEY` | API key de Cloudinary | ✅ |
 | `CLOUDINARY_API_SECRET` | API secret de Cloudinary | ✅ |
 
-### Frontend (`frontend/.env`)
+### Frontend (`Frontend/.env`)
 
 | Variable | Descripción | Requerido |
 |----------|-------------|-----------|
@@ -382,4 +382,3 @@ MIT — ver archivo `LICENSE` para más detalles.
 - GitHub: [@tu-usuario](https://github.com/tu-usuario)
 - LinkedIn: [Tu nombre](https://linkedin.com)
 - Email: jhonfredyha@gmail.com
-

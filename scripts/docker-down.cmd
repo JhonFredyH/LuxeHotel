@@ -1,6 +1,6 @@
 @echo off
 setlocal enabledelayedexpansion
-cd /d %~dp0\..\Backend
+cd /d %~dp0\..
 
 echo.
 echo [LuxeHotel] Stopping Docker stack (data preserved)...

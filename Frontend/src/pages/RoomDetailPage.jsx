@@ -199,7 +199,7 @@ const RoomDetailPage = () => {
     return () => {
       cancelled = true;
     };
-  }, [room?.uuid, formData.checkIn, formData.checkOut]);
+  }, [room?.uuid, formData.checkIn, formData.checkOut, getRoomAvailability]);
 
   if (loading) {
     return (

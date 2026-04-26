@@ -39,10 +39,11 @@ const CheckRates = () => {
 
   const apiCheckIn = parsedCheckIn ? parsedCheckIn.slice(0, 10) : "";
   const apiCheckOut = parsedCheckOut ? parsedCheckOut.slice(0, 10) : "";
+  const shouldCheckAvailability =
+    Boolean(apiCheckIn) && Boolean(apiCheckOut) && availableRooms.length > 0;
 
   useEffect(() => {
-    if (!apiCheckIn || !apiCheckOut || availableRooms.length === 0) {
-      setAvailabilityByRoom({});
+    if (!shouldCheckAvailability) {
       return;
     }
 
@@ -105,7 +106,13 @@ const CheckRates = () => {
     return () => {
       cancelled = true;
     };
-  }, [apiCheckIn, apiCheckOut, availableRooms]);
+  }, [
+    availableRooms,
+    apiCheckIn,
+    apiCheckOut,
+    getRoomAvailability,
+    shouldCheckAvailability,
+  ]);
 
   const sortedRooms = useMemo(() => {
     const roomsList = [...availableRooms];
@@ -311,7 +318,7 @@ const CheckRates = () => {
             variant="compare"
             nights={nights}
             reservationData={reservationData}
-            availability={availabilityByRoom[room.uuid]}
+            availability={shouldCheckAvailability ? availabilityByRoom[room.uuid] : undefined}
           />
         ))}
       </div>

@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { useAvailabilityCache } from "./useAvailabilityCache";
 import { fetchRoomAvailability } from "../services/availabilityService";
 
@@ -42,13 +43,16 @@ export const computeAvailableUnits = (payload, checkInDate, checkOutDate) => {
 export const useAvailability = () => {
   const { getAvailability, clearAvailabilityCache } = useAvailabilityCache();
 
-  const getRoomAvailability = ({ roomId, checkIn, checkOut }) =>
-    getAvailability({
-      roomId,
-      checkIn,
-      checkOut,
-      fetcher: () => fetchRoomAvailability({ roomId, checkIn, checkOut }),
-    });
+  const getRoomAvailability = useCallback(
+    ({ roomId, checkIn, checkOut }) =>
+      getAvailability({
+        roomId,
+        checkIn,
+        checkOut,
+        fetcher: () => fetchRoomAvailability({ roomId, checkIn, checkOut }),
+      }),
+    [getAvailability],
+  );
 
   return { getRoomAvailability, clearAvailabilityCache };
 };

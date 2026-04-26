@@ -32,8 +32,11 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
+        "http://localhost:5174",
         "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
     ],
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1):51\d{2}$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -331,10 +334,37 @@ def get_rooms(
         query = query.filter(Room.view_type.ilike(f"%{view_type}%"))
     query = query.order_by(Room.rating.desc(), Room.price_per_night.asc())
     result = paginate(query, page, limit)
-    for room in result['data']:
-        room.__dict__['amenities'] = [a.code for a in room.amenities]
-        
-    return result
+
+    serialized_rooms = []
+    for room in result["data"]:
+        serialized_rooms.append({
+            "id": room.id,
+            "slug": room.slug,
+            "name": room.name,
+            "description": room.description,
+            "price_per_night": float(room.price_per_night),
+            "size_m2": room.size_m2,
+            "view_type": room.view_type,
+            "floor": room.floor,
+            "max_adults": room.max_adults,
+            "max_children": room.max_children,
+            "max_guests": room.max_guests,
+            "quantity": room.quantity,
+            "image_url": room.image_url,
+            "rating": room.rating,
+            "total_reviews": room.total_reviews,
+            "amenities": [amenity.code for amenity in room.amenities],
+            "is_active": room.is_active,
+            "created_at": room.created_at,
+        })
+
+    return {
+        "total": result["total"],
+        "page": result["page"],
+        "limit": result["limit"],
+        "total_pages": result["total_pages"],
+        "data": serialized_rooms,
+    }
 
 
 

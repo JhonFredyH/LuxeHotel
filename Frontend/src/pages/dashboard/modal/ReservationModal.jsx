@@ -80,7 +80,7 @@ const ReservationModal = ({ isOpen, onClose, isDark, reservation = null, onSubmi
       setGuestResults([]);
       setGuestSelected(false);
     }
-  }, [isOpen, reservation?.id]);
+  }, [isOpen, reservation]);
 
   // ── ESC + scroll lock ─────────────────────────────────────
   useEffect(() => {
