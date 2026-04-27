@@ -5,10 +5,12 @@
 Full-stack web application for managing hotel reservations with real-time availability control, preventing concurrency conflicts and overbooking.
 
 🔗 Demo: [luxe-hotel-mu.vercel.app](https://luxe-hotel-mu.vercel.app/)  
-📖 API Docs: [tu-api.onrender.com/docs](https://tu-api.onrender.com/docs)  
+📖 API Docs: [luxehotel-api.onrender.com/docs](https://luxehotel-api.onrender.com/docs)  
 🔑 Admin Panel: [luxe-hotel-mu.vercel.app/login](https://luxe-hotel-mu.vercel.app/login)
 
-> **Test credentials:** `admin@luxehotel.com` / `admin123`  
+
+> **Test credentials:** `admin@luxehotel.com` / `admin123`
+> 
 > ⚠️ The API may take ~30s to wake up (free Render instance)
 
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.104-009688?style=flat&logo=fastapi)
