@@ -6,6 +6,7 @@ load_dotenv()
 
 class Settings:
     def __init__(self):
+        self.DATABASE_URL_RAW = os.getenv("DATABASE_URL")
         self.DB_USER = os.getenv("DB_USER")
         self.DB_PASSWORD = os.getenv("DB_PASSWORD")
         self.DB_HOST = os.getenv("DB_HOST", "localhost")
@@ -21,11 +22,15 @@ class Settings:
         if not self.SECRET_KEY:
             raise ValueError("SECRET_KEY no está definida en el .env")
 
-        if not self.DB_USER or not self.DB_PASSWORD or not self.DB_NAME:
+        if not self.DATABASE_URL_RAW and (
+            not self.DB_USER or not self.DB_PASSWORD or not self.DB_NAME
+        ):
             raise ValueError("Credenciales de base de datos incompletas")
 
     @property
     def DATABASE_URL(self):
+        if self.DATABASE_URL_RAW:
+            return self.DATABASE_URL_RAW.replace("postgres://", "postgresql://", 1)
         return (
             f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}"
             f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"

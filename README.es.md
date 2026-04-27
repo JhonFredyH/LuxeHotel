@@ -39,6 +39,7 @@ Aplicación web fullstack para gestionar reservas hoteleras con control de dispo
 - [Arquitectura](#arquitectura)
 - [Modelo de base de datos](#modelo-de-base-de-datos)
 - [Instalación](#instalación)
+- [Despliegue en Render](#despliegue-en-render)
 - [Variables de entorno](#variables-de-entorno)
 - [Documentación de la API](#documentación-de-la-api)
 - [Hoja de ruta](#hoja-de-ruta)
@@ -217,6 +218,32 @@ maintenance ──→ available  (staff resuelve el problema)
 git clone https://github.com/tu-usuario/luxehotel.git
 cd luxehotel
 ```
+
+## Despliegue en Render
+
+Este repo ya incluye [render.yaml](./render.yaml) para desplegar:
+
+- `luxehotel-db`: PostgreSQL administrado por Render
+- `luxehotel-backend`: servicio web FastAPI
+- `luxehotel-frontend`: sitio estático Vite
+
+### Pasos
+
+1. Sube el proyecto a GitHub.
+2. En Render, elige **New +** → **Blueprint**.
+3. Conecta tu repo y selecciona `render.yaml`.
+4. Antes del primer deploy, define estos valores manuales en Render:
+   - `ADMIN_EMAIL`
+   - `ADMIN_PASSWORD`
+   - `CORS_ORIGINS`
+     ejemplo: `https://tu-frontend.onrender.com`
+5. Cuando Render termine, copia la URL real del backend y actualiza `VITE_API_URL` del servicio `luxehotel-frontend` si quieres usar un dominio distinto al sugerido en `render.yaml`.
+
+### Notas
+
+- El backend soporta `DATABASE_URL`, que es la forma nativa en Render.
+- `render-start.sh` ejecuta reparación de esquema y seed del admin antes de arrancar la API.
+- Para SPA, Render reescribe todas las rutas del frontend a `index.html`.
 
 ### 2. Configurar variables de entorno
 ```bash
