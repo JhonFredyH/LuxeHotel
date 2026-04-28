@@ -27,6 +27,7 @@ from schemas import (
 
 from auth import hash_password, verify_password, create_access_token, get_current_user, require_admin
 from utils.pagination import paginate
+from utils.room_units import ensure_room_units, mark_unit_status
 
 app = FastAPI(title="LuxeHotel API", version="1.0.0")
 
@@ -67,14 +68,16 @@ def get_db():
 def sync_unit_status(db: Session, room_id, unit_number: Optional[str], new_status: str):
     if not unit_number:
         return
+    room = db.query(Room).filter(Room.id == room_id).first()
+    if room:
+        ensure_room_units(db, room)
     unit = (
         db.query(RoomUnit)
         .filter(RoomUnit.room_id == room_id, RoomUnit.unit_number == unit_number)
         .first()
     )
     if unit:
-        unit.status = new_status
-        unit.updated_at = datetime.now()
+        mark_unit_status(unit, new_status)
 
 
 def normalize_date(value) -> date_type:
@@ -129,19 +132,11 @@ def find_available_room_number(
         .all()
     )
 
-    # ── Sin unidades configuradas (habitación única como Penthouse) ──────────
-    # Antes: simplemente retornaba requested sin validar nada  ← BUG
-    # Ahora: verifica solapamiento real antes de permitir la reserva
     if not units:
-        if check_room_overlap(db, room_id, check_in_date, check_out_date, exclude_reservation_id):
-            raise HTTPException(
-                status_code=409,
-                detail="This room is already booked for the selected dates. "
-                       "Please choose different dates."
-            )
-        return requested  # OK, no hay conflicto
+        room = db.query(Room).filter(Room.id == room_id).first()
+        if room:
+            units = ensure_room_units(db, room)
 
-    # ── Con unidades configuradas (ej. Garden View con unidades 101, 102…) ──
     valid_numbers = {u.unit_number for u in units}
     if requested and requested not in valid_numbers:
         raise HTTPException(
@@ -395,6 +390,8 @@ def get_room_availability(
     room = db.query(Room).filter(Room.id == room_id).first()
     if not room:
         raise HTTPException(status_code=404, detail="Room not found")
+    units = ensure_room_units(db, room)
+    db.commit()
 
     today = date_type.today()
 
@@ -413,8 +410,6 @@ def get_room_availability(
         }
         for r in active
     ]
-
-    units = db.query(RoomUnit).filter(RoomUnit.room_id == room_id).all()
 
     result = {
         "room_id":   str(room_id),
@@ -565,6 +560,7 @@ def create_reservation_admin(
     room = db.query(Room).filter(Room.id == reservation.room_id).first()
     if not room:
         raise HTTPException(status_code=404, detail="Room not found")
+    ensure_room_units(db, room)
 
     guest = db.query(Guest).filter(Guest.email == reservation.email).first()
     if not guest:
@@ -763,6 +759,7 @@ def create_guest_reservation(reservation: GuestReservationCreate, db: Session = 
         raise HTTPException(status_code=404, detail="Room not found")
     if not room.is_active:
         raise HTTPException(status_code=400, detail="This room is not available")
+    ensure_room_units(db, room)
 
     total_guests = reservation.adults + reservation.children
     if total_guests > room.max_guests:

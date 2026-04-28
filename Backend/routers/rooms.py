@@ -6,6 +6,7 @@ from datetime import datetime
 from database import get_db
 from models.room import Room, RoomUnit
 from auth import get_current_user
+from utils.room_units import ensure_room_units, refresh_room_status_from_units
 import uuid
 import re
 
@@ -25,63 +26,6 @@ class RoomUnitCreate(BaseModel):
 def slug_to_title(slug: str) -> str:
     return ' '.join(word.capitalize() for word in slug.split('-'))
 
-
-def expand_rooms(rooms: list) -> list:
-    result = []
-    floor_counters = {}
-
-    for room in rooms:
-        floor = room.floor or "1"
-        floor_num_match = re.search(r'\d+', str(floor))
-        floor_num = int(floor_num_match.group()) if floor_num_match else 1
-
-        qty = room.quantity or 1
-        for i in range(qty):
-            key = floor_num
-            floor_counters[key] = floor_counters.get(key, 0) + 1
-            room_number = f"{floor_num}{floor_counters[key]:02d}"
-
-            result.append({
-                "id": f"{room.id}-{i+1}",
-                "room_type_id": str(room.id),
-                "number": room_number,
-                "name": room.name,
-                "slug": room.slug,
-                "type": slug_to_title(room.slug),
-                "status": room.status,
-                "price_per_night": float(room.price_per_night),
-                "floor": room.floor,
-                "view_type": room.view_type,
-                "max_guests": room.max_guests,
-                "image_url": room.image_url,
-                "amenities": [a.label for a in room.amenities],
-                "size_m2": room.size_m2,
-                "rating": float(room.rating) if room.rating else 0.0,
-            })
-
-    return result
-
-
-def build_room_numbers(rooms: list) -> dict:
-    floor_counters = {}
-    room_numbers_by_type = {}
-
-    for room in rooms:
-        floor = room.floor or "1"
-        floor_num_match = re.search(r'\d+', str(floor))
-        floor_num = int(floor_num_match.group()) if floor_num_match else 1
-
-        qty = room.quantity or 1
-        numbers = []
-        for _ in range(qty):
-            key = floor_num
-            floor_counters[key] = floor_counters.get(key, 0) + 1
-            numbers.append(f"{floor_num}{floor_counters[key]:02d}")
-        room_numbers_by_type[str(room.id)] = numbers
-
-    return room_numbers_by_type
-
-
 @router.get("")
 def get_rooms(
     floor: str = Query(None),
@@ -96,10 +40,11 @@ def get_rooms(
             query = query.filter(Room.floor == floor)
 
         rooms = query.order_by(Room.floor, Room.name).all()
-        room_numbers_by_type = build_room_numbers(rooms)
         result = []
 
         for room in rooms:
+            units = ensure_room_units(db, room)
+            room.status = refresh_room_status_from_units(room, units)
             room_data = {
                 "id": str(room.id),
                 "room_type_id": str(room.id),
@@ -115,14 +60,15 @@ def get_rooms(
                 "amenities": [a.label for a in room.amenities],
                 "size_m2": room.size_m2,
                 "rating": float(room.rating) if room.rating else 0.0,
-                "quantity": room.quantity or 1,
-                "room_numbers": room_numbers_by_type.get(str(room.id), []),
+                "quantity": len(units),
+                "room_numbers": [unit.unit_number for unit in units],
             }
             result.append(room_data)
 
         if status and status != "All":
             result = [r for r in result if r["status"] == status.lower()]
 
+        db.commit()
         return {"data": result, "total": len(result)}
     except Exception:
         import traceback
@@ -136,6 +82,11 @@ def get_room_stats(
     current_user: dict = Depends(get_current_user)
 ):
     from sqlalchemy import func
+    rooms = db.query(Room).filter(Room.is_active == True).all()
+    for room in rooms:
+        ensure_room_units(db, room)
+    db.flush()
+
     rows = (
         db.query(RoomUnit.status, func.count(RoomUnit.id))
         .join(Room, RoomUnit.room_id == Room.id)
@@ -193,6 +144,12 @@ def get_room_units(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
+    room = db.query(Room).filter(Room.id == room_id).first()
+    if not room:
+        raise HTTPException(status_code=404, detail="Habitación no encontrada")
+
+    ensure_room_units(db, room)
+    db.commit()
     units = (
         db.query(RoomUnit)
         .filter(RoomUnit.room_id == room_id)
