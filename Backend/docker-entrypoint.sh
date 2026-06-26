@@ -2,7 +2,14 @@
 set -e
 
 echo "[backend] Waiting for database..."
+RETRIES=30
 until PGPASSWORD="$DB_PASSWORD" pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" >/dev/null 2>&1; do
+  RETRIES=$((RETRIES - 1))
+  if [ $RETRIES -eq 0 ]; then
+    echo "[backend] Could not connect to database, starting anyway..."
+    break
+  fi
+  echo "[backend] Waiting... ($RETRIES retries left)"
   sleep 2
 done
 
@@ -21,4 +28,4 @@ echo "[backend] Seeding admin user..."
 python /app/scripts/seed_admin.py
 
 echo "[backend] Starting API..."
-exec uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+exec uvicorn main:app --host 0.0.0.0 --port 8000
