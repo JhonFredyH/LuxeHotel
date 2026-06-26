@@ -256,6 +256,10 @@ class ReservationConfirmation(BaseModel):
 def read_root():
     return {"message": "LuxeHotel API - Hotel Management System", "version": "1.0.0"}
 
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
+
 
 # ============ AUTH (admin/staff users) ============
 
