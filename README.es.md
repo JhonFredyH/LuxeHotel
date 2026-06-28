@@ -1,118 +1,131 @@
-> 🌐 [English version](./README.md)
+> 🌐 > 🌐 [English version](./README.md)
 
-# LuxeHotel — Sistema de gestión hotelera
+# LuxeHotel — Sistema de Gestión Hotelera
 
-Aplicación web fullstack para gestionar reservas hoteleras con control de disponibilidad en tiempo real, previniendo conflictos de concurrencia y sobreventa (overbooking).
+Aplicación web fullstack lista para producción que gestiona reservas hoteleras con control de disponibilidad en tiempo real, previniendo conflictos de concurrencia y overbooking.
 
-🔗 Demo: *(agrega tu link)*
-🔗 Documentación API: http://localhost:8000/docs
+🔗 **Demo:** [luxe-hotel-mu.vercel.app](https://luxe-hotel-mu.vercel.app)
+🔗 **Documentación API:** [luxehotel-api.onrender.com/docs](https://luxehotel-api.onrender.com/docs)
 
-![FastAPI](https://img.shields.io/badge/FastAPI-0.104-009688?style=flat&logo=fastapi)
+> ⚠️ Backend en Render Free — la primera carga puede tardar ~30s en despertar el servidor.
+
+![FastAPI](https://img.shields.io/badge/FastAPI-0.129-009688?style=flat&logo=fastapi)
 ![React](https://img.shields.io/badge/React-18.2-61DAFB?style=flat&logo=react)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-336791?style=flat&logo=postgresql)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat&logo=docker)
+![Supabase](https://img.shields.io/badge/Supabase-Database-3ECF8E?style=flat&logo=supabase)
+![Cloudinary](https://img.shields.io/badge/Cloudinary-CDN-3448C5?style=flat&logo=cloudinary)
 
 ---
 
-## 🚀 Puntos clave
+## Puntos Clave
 
-- Sistema de reservas en tiempo real
-- Prevención de overbooking mediante control de concurrencia
-- Gestión de habitaciones por unidad física (no solo tipos)
-- Sincronización automática de estados con triggers en PostgreSQL
-- Panel administrativo con métricas en vivo (ocupación, ingresos, check-ins)
-
-## ⚙️ Retos técnicos resueltos
-
-- Manejo de múltiples reservas simultáneas sin conflictos
-- Evitar condiciones de carrera (race conditions)
-- Mantener consistencia entre backend y base de datos
-- Diseño de modelo relacional escalable
-- Automatización de estados de habitaciones
+- Sistema de reservas en tiempo real con prevención de overbooking
+- Gestión de habitaciones por unidad física (no solo tipos de habitación)
+- Máquina de estados automática para transiciones de estado de unidades
+- Triggers de PostgreSQL para agregación automática de calificaciones
+- Panel administrativo con KPIs en vivo: ocupación, ingresos, check-ins
+- Autenticación JWT con control de acceso por roles (admin / guest)
+- Dockerizado para desarrollo local, desplegado en Render + Vercel + Supabase
 
 ---
 
-## Tabla de contenidos
+## Retos Técnicos Resueltos
+
+- Manejo de reservas concurrentes sin conflictos (race conditions)
+- Consistencia de datos entre backend y base de datos
+- Modelo relacional escalable con integridad referencial
+- Sincronización automática del estado de unidades vinculada al ciclo de vida de las reservas
+- Compatibilidad IPv4/IPv6 entre Render y Supabase mediante Session Pooler
+
+---
+
+## Tabla de Contenidos
 
 - [Características](#características)
-- [Pila tecnológica](#pila-tecnológica)
+- [Pila Tecnológica](#pila-tecnológica)
 - [Arquitectura](#arquitectura)
-- [Modelo de base de datos](#modelo-de-base-de-datos)
-- [Instalación](#instalación)
-- [Despliegue en Render](#despliegue-en-render)
-- [Variables de entorno](#variables-de-entorno)
+- [Modelo de Base de Datos](#modelo-de-base-de-datos)
+- [Instalación Local](#instalación-local)
+- [Variables de Entorno](#variables-de-entorno)
 - [Documentación de la API](#documentación-de-la-api)
-- [Hoja de ruta](#hoja-de-ruta)
+- [Hoja de Ruta](#hoja-de-ruta)
 
 ---
 
 ## Características
 
-### Panel de administración
-- Dashboard con métricas en tiempo real (ingresos, ocupación, check-ins del día, huéspedes activos)
+### Panel de Administración
+- Dashboard con KPIs en tiempo real: ingresos, tasa de ocupación, check-ins del día, huéspedes activos
 - Gestión completa de reservas: crear, editar, check-in, check-out, cancelar
 - Gestión de huéspedes con búsqueda y paginación
 - Gestión de habitaciones con filtros por piso y estado
 
-### Sistema de habitaciones por unidad
+### Sistema de Unidades Físicas
 - Cada tipo de habitación tiene unidades físicas individuales (ej: 101, 102, 103...)
 - Control de estado por unidad: `available`, `occupied`, `maintenance`, `cleaning`
-- Los estados se sincronizan automáticamente con las reservas:
+- El estado se sincroniza automáticamente con el ciclo de vida de las reservas:
   - Crear reserva → unidad pasa a `occupied`
   - Check-out → unidad pasa a `cleaning`
   - Cancelar → unidad vuelve a `available`
-- Al crear una reserva, solo se pueden seleccionar unidades disponibles
+- Selección visual de unidad al crear una reserva
 - El staff puede cambiar el estado manualmente desde el panel
 
-### Motor de reservas
+### Motor de Reservas
 - Reservas desde el panel admin con selección visual de unidad
 - Reservas públicas sin autenticación (`/guest-booking`)
 - Cálculo automático de precios: subtotal + 10% impuestos + 1.4% cargo por servicio
 - Validación de capacidad y fechas
 - Búsqueda de huéspedes existentes por nombre o email
 
-### Autenticación y roles
-- JWT con roles: `admin` y `guest`
+### Autenticación y Roles
+- JWT con roles `admin` y `guest`
 - Rutas protegidas por rol en backend y frontend
-- Login independiente para administradores y huéspedes
+- Flujos de login independientes para administradores y huéspedes
 
-### Sistema de reviews
-- Reseñas verificadas (solo huéspedes con reserva confirmada)
+### Sistema de Reseñas
+- Reseñas verificadas (solo huéspedes con estancia confirmada)
 - Calificaciones desglosadas: limpieza, comodidad, ubicación, personal, valor
-- Ratings agregados actualizados automáticamente con triggers de PostgreSQL — sin lógica en aplicación
+- Ratings agregados actualizados automáticamente por triggers de PostgreSQL — sin lógica en la aplicación
 - Filtrado por tipo de viajero
 
 ---
 
-## Pila tecnológica
+## Pila Tecnológica
 
 **Frontend**
 
 | Tecnología | Versión | Rol |
 |-----------|---------|-----|
-| React | 18.2 | UI library |
+| React | 18.2 | Biblioteca UI |
 | React Router | 6 | Navegación SPA |
 | Context API | — | Estado global |
-| TailwindCSS | 3 | Utility-first CSS |
+| TailwindCSS | 3 | CSS utility-first |
+| Axios | — | Cliente HTTP |
 | Lucide React | — | Iconos |
 
 **Backend**
 
 | Tecnología | Versión | Rol |
 |-----------|---------|-----|
-| FastAPI | 0.104 | Framework async |
+| FastAPI | 0.129 | Framework REST async |
 | SQLAlchemy | 2.0 | ORM + Core queries |
-| Pydantic | 2 | Validación y serialización |
+| Pydantic | v2 | Validación y serialización |
 | Alembic | — | Migraciones versionadas |
-| python-jose | — | JWT encoding/decoding |
+| python-jose | — | Codificación JWT |
+| bcrypt | — | Hash de contraseñas |
 
 **Infraestructura**
 
 | Tecnología | Rol |
 |-----------|-----|
 | PostgreSQL 17 | Base de datos principal |
+| Supabase | PostgreSQL gestionado (producción) |
 | Docker Compose | Orquestación local |
-| Cloudinary | Almacenamiento y CDN de imágenes |
+| Render | Hosting del backend |
+| Vercel | Hosting del frontend |
+| Cloudinary | Almacenamiento de imágenes y CDN |
+| UptimeRobot | Monitoreo para mantener el backend activo |
 
 ---
 
@@ -121,19 +134,22 @@ Aplicación web fullstack para gestionar reservas hoteleras con control de dispo
 ```
 ┌─────────────────────────────────────────────────┐
 │              FRONTEND                           │
-│    React 18 · TailwindCSS · Context API         │
+│    React 18 · TailwindCSS · Axios               │
+│    Vercel (CDN)                                 │
 └──────────────────────┬──────────────────────────┘
                        │ REST / JSON
                        ▼
 ┌─────────────────────────────────────────────────┐
-│              API LAYER                          │
+│              CAPA API                           │
 │    FastAPI · Pydantic v2 · JWT Auth             │
-│    Dependency Injection · Background Tasks      │
+│    Docker · Render Free                         │
 └──────────────────────┬──────────────────────────┘
                        │ SQLAlchemy 2.0 ORM
                        ▼
 ┌─────────────────────────────────────────────────┐
-│           DATABASE — PostgreSQL 17              │
+│        BASE DE DATOS — PostgreSQL 17            │
+│        Supabase (Session Pooler / IPv4)         │
+│                                                 │
 │  rooms · room_units · reservations · guests     │
 │  users · reviews · payments · amenities         │
 │                                                 │
@@ -142,11 +158,9 @@ Aplicación web fullstack para gestionar reservas hoteleras con control de dispo
 └─────────────────────────────────────────────────┘
 ```
 
-El backend expone una API REST stateless. Toda la lógica de negocio (cálculo de precios, validación de disponibilidad, transiciones de estado) vive en la capa de servicio de FastAPI, no en el frontend ni en stored procedures ad-hoc.
-
 ---
 
-## Modelo de base de datos
+## Modelo de Base de Datos
 
 ```
 ┌─────────────┐       ┌──────────────┐       ┌──────────────────┐
@@ -158,7 +172,6 @@ El backend expone una API REST stateless. Toda la lógica de negocio (cálculo d
 │ role        │       │ email        │       │ floor            │
 └─────────────┘       │ phone        │       │ quantity         │
                       └──────┬───────┘       │ rating ★         │
-                             │               │ status           │
                              │               └────────┬─────────┘
                              │                        │
                              │               ┌────────▼─────────┐
@@ -168,7 +181,6 @@ El backend expone una API REST stateless. Toda la lógica de negocio (cálculo d
                              │               │ room_id (FK)     │
                              │               │ unit_number      │
                              │               │ status           │
-                             │               │ notes            │
                              │               └──────────────────┘
                              │
                       ┌──────▼───────────────┐
@@ -197,53 +209,27 @@ El backend expone una API REST stateless. Toda la lógica de negocio (cálculo d
 ★ = Actualizado automáticamente por triggers de PostgreSQL
 ```
 
-### Máquina de estados de room_unit
+### Máquina de Estados de room_unit
 
 ```
-available ──→ occupied     (al crear reserva o check-in)
-occupied  ──→ cleaning     (al hacer check-out)
-cleaning  ──→ available    (staff confirma limpieza)
-available ──→ maintenance  (staff asigna manualmente)
-maintenance ──→ available  (staff resuelve el problema)
+available   ──→ occupied      (al crear reserva o check-in)
+occupied    ──→ cleaning      (al hacer check-out)
+cleaning    ──→ available     (staff confirma limpieza)
+available   ──→ maintenance   (staff asigna manualmente)
+maintenance ──→ available     (staff resuelve el problema)
 ```
 
 ---
 
-## Instalación
+## Instalación Local
 
 **Prerequisitos:** Docker Desktop, Node.js 18+, Python 3.12+, Git
 
 ### 1. Clonar el repositorio
 ```bash
-git clone https://github.com/tu-usuario/luxehotel.git
-cd luxehotel
+git clone https://github.com/JhonFredyH/LuxeHotel.git
+cd LuxeHotel
 ```
-
-## Despliegue en Render
-
-Este repo ya incluye [render.yaml](./render.yaml) para desplegar:
-
-- `luxehotel-db`: PostgreSQL administrado por Render
-- `luxehotel-backend`: servicio web FastAPI
-- `luxehotel-frontend`: sitio estático Vite
-
-### Pasos
-
-1. Sube el proyecto a GitHub.
-2. En Render, elige **New +** → **Blueprint**.
-3. Conecta tu repo y selecciona `render.yaml`.
-4. Antes del primer deploy, define estos valores manuales en Render:
-   - `ADMIN_EMAIL`
-   - `ADMIN_PASSWORD`
-   - `CORS_ORIGINS`
-     ejemplo: `https://tu-frontend.onrender.com`
-5. Cuando Render termine, copia la URL real del backend y actualiza `VITE_API_URL` del servicio `luxehotel-frontend` si quieres usar un dominio distinto al sugerido en `render.yaml`.
-
-### Notas
-
-- El backend soporta `DATABASE_URL`, que es la forma nativa en Render.
-- `render-start.sh` ejecuta reparación de esquema y seed del admin antes de arrancar la API.
-- Para SPA, Render reescribe todas las rutas del frontend a `index.html`.
 
 ### 2. Configurar variables de entorno
 ```bash
@@ -251,7 +237,7 @@ cp Backend/.env.example Backend/.env
 cp Frontend/.env.example Frontend/.env
 ```
 
-### 3. Levantar todo el stack
+### 3. Levantar el stack completo
 ```bash
 docker compose up --build
 ```
@@ -262,22 +248,16 @@ Esto inicia:
 - Frontend en `http://localhost:5173`
 - Swagger docs en `http://localhost:8000/docs`
 
-El backend en Docker restaura `Backend/backup.utf8.sql` automáticamente cuando la base está vacía y luego aplica la reparación de esquema si hace falta.
+El backend restaura `Backend/backup.utf8.sql` automáticamente en una base de datos vacía y aplica reparaciones de esquema si es necesario.
 
 ### 4. Detener el stack
 ```bash
 docker compose down
 ```
 
-### 5. Helpers opcionales para Windows
-```bash
-scripts\docker-up.cmd
-scripts\docker-down.cmd
-```
-
 ---
 
-## Variables de entorno
+## Variables de Entorno
 
 ### Backend (`Backend/.env`)
 
@@ -294,6 +274,7 @@ scripts\docker-down.cmd
 | `CLOUDINARY_CLOUD_NAME` | Nombre de nube Cloudinary | ✅ |
 | `CLOUDINARY_API_KEY` | API key de Cloudinary | ✅ |
 | `CLOUDINARY_API_SECRET` | API secret de Cloudinary | ✅ |
+| `CORS_ORIGINS` | Orígenes permitidos del frontend | ✅ |
 
 ### Frontend (`Frontend/.env`)
 
@@ -305,21 +286,15 @@ scripts\docker-down.cmd
 
 ## Documentación de la API
 
-Documentación interactiva completa en `http://localhost:8000/docs`.
+Documentación interactiva completa en `/docs` (Swagger) y `/redoc`.
 
 ### Habitaciones
 
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
 | `GET` | `/rooms` | Listar habitaciones con filtros |
-| `GET` | `/rooms-admin` | Listar habitaciones con room_numbers (admin) |
-| `GET` | `/rooms-admin/stats` | Conteo de unidades por estado |
-| `GET` | `/rooms-admin/floors` | Pisos disponibles |
-| `GET` | `/rooms-admin/{room_id}/units` | Unidades físicas de un tipo |
-| `POST` | `/rooms-admin/{room_id}/units` | Crear unidad |
-| `PATCH` | `/rooms-admin/units/{unit_id}/status` | Cambiar estado de unidad |
-| `DELETE` | `/rooms-admin/units/{unit_id}` | Eliminar unidad |
-| `GET` | `/rooms/{room_id}/reviews` | Reviews de una habitación |
+| `GET` | `/rooms/{id}/availability` | Verificar disponibilidad |
+| `GET` | `/rooms/{id}/reviews` | Reseñas de una habitación |
 
 ### Reservas
 
@@ -345,67 +320,54 @@ Documentación interactiva completa en `http://localhost:8000/docs`.
 | `POST` | `/guests/register` | Registro público |
 | `POST` | `/guests/login` | Login de huésped |
 
-### Autenticación y dashboard
+### Autenticación y Dashboard
 
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
 | `POST` | `/login` | Login de administrador |
 | `POST` | `/register` | Registro de administrador |
-| `GET` | `/dashboard/stats` | KPIs del dashboard |
+| `GET` | `/dashboard/stats` | KPIs en tiempo real |
 | `GET` | `/dashboard/revenue` | Ingresos por día |
+| `GET` | `/health` | Health check |
 
 ---
 
-## Hoja de ruta
+## Hoja de Ruta
 
 ### ✅ Completado
-- Autenticación JWT (admin + guest)
+- Autenticación JWT (roles admin + guest)
 - CRUD de habitaciones con amenidades
-- Control de inventario por unidad física (`room_units`)
-- Sincronización automática de estados unidad ↔ reserva
-- Sistema de reservas con selección visual de unidad
+- Inventario por unidad física (`room_units`)
+- Sincronización automática de estados: unidad ↔ reserva
+- Selección visual de unidad en el flujo de reserva
 - Check-in / check-out / cancelación con actualización de estado
-- Reviews y calificaciones con triggers automáticos
-- Panel de administración con dashboard de métricas
-- KPI cards de ocupación por unidad real
+- Reseñas con ratings auto-agregados por triggers
+- Panel de administración con KPIs en vivo
 - Integración con Cloudinary para imágenes
 - Dockerización completa
 - Diseño responsive
+- Migración a Supabase (base de datos en producción)
+- Monitoreo con UptimeRobot
 
-### 🚧 En progreso
+### 🚧 En Progreso
 - Sistema de notificaciones por email
-- Mejoras al dashboard (gráficos de ocupación)
+- Gráficos de ocupación en el dashboard
 
 ### 📋 Planeado
 - Integración con Stripe / PayPal
 - Multiidioma (i18n)
-- PWA (Aplicación web progresiva)
+- PWA (Aplicación Web Progresiva)
 - Sistema de descuentos y promociones
 - Pruebas automatizadas (Jest, Pytest)
 - CI/CD con GitHub Actions
-- Redis para caché
-
----
-
-## Contribuir
-
-1. Fork el proyecto
-2. Crea tu rama: `git checkout -b feature/NuevaFuncionalidad`
-3. Commit: `git commit -m 'Add NuevaFuncionalidad'`
-4. Push: `git push origin feature/NuevaFuncionalidad`
-5. Abre un Pull Request
-
----
-
-## Licencia
-
-MIT — ver archivo `LICENSE` para más detalles.
+- Caché con Redis
 
 ---
 
 ## Autor
 
-**Tu nombre**
-- GitHub: [@tu-usuario](https://github.com/tu-usuario)
-- LinkedIn: [Tu nombre](https://linkedin.com)
-- Email: jhonfredyha@gmail.com
+**Jhon Fredy Hidalgo**
+- GitHub: [@JhonFredyH](https://github.com/JhonFredyH)
+- LinkedIn: [linkedin.com/in/jhonfredyhidalgo](https://linkedin.com/in/jhonfredyhidalgo)
+- Email: jhonfredyha5@gmail.com
+
