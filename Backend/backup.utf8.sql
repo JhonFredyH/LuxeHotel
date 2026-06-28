@@ -2,7 +2,6 @@
 -- PostgreSQL database dump
 --
 
-\restrict lNAoZUFsx3xOaasAqVvy2be3qqr8LaHepmLtdDHpt6Aie8xZyKb3jBNXWEeo91F
 
 -- Dumped from database version 17.8 (Debian 17.8-1.pgdg13+1)
 -- Dumped by pg_dump version 17.8 (Debian 17.8-1.pgdg13+1)
@@ -29,7 +28,7 @@ CREATE TYPE public.paymentmethod AS ENUM (
 );
 
 
-ALTER TYPE public.paymentmethod OWNER TO luxe_user;
+ALTER TYPE public.paymentmethod  OWNER TO postgres;
 
 --
 -- Name: paymentstatus; Type: TYPE; Schema: public; Owner: luxe_user
@@ -44,7 +43,7 @@ CREATE TYPE public.paymentstatus AS ENUM (
 );
 
 
-ALTER TYPE public.paymentstatus OWNER TO luxe_user;
+ALTER TYPE public.paymentstatus  OWNER TO postgres;
 
 --
 -- Name: reservationstatus; Type: TYPE; Schema: public; Owner: luxe_user
@@ -59,7 +58,7 @@ CREATE TYPE public.reservationstatus AS ENUM (
 );
 
 
-ALTER TYPE public.reservationstatus OWNER TO luxe_user;
+ALTER TYPE public.reservationstatus  OWNER TO postgres;
 
 --
 -- Name: userrole; Type: TYPE; Schema: public; Owner: luxe_user
@@ -71,7 +70,7 @@ CREATE TYPE public.userrole AS ENUM (
 );
 
 
-ALTER TYPE public.userrole OWNER TO luxe_user;
+ALTER TYPE public.userrole  OWNER TO postgres;
 
 SET default_tablespace = '';
 
@@ -86,7 +85,7 @@ CREATE TABLE public.alembic_version (
 );
 
 
-ALTER TABLE public.alembic_version OWNER TO luxe_user;
+ALTER TABLE public.alembic_version  OWNER TO postgres;
 
 --
 -- Name: guests; Type: TABLE; Schema: public; Owner: luxe_user
@@ -109,7 +108,7 @@ CREATE TABLE public.guests (
 );
 
 
-ALTER TABLE public.guests OWNER TO luxe_user;
+ALTER TABLE public.guests  OWNER TO postgres;
 
 --
 -- Name: payments; Type: TABLE; Schema: public; Owner: luxe_user
@@ -131,7 +130,7 @@ CREATE TABLE public.payments (
 );
 
 
-ALTER TABLE public.payments OWNER TO luxe_user;
+ALTER TABLE public.payments  OWNER TO postgres;
 
 --
 -- Name: reservations; Type: TABLE; Schema: public; Owner: luxe_user
@@ -158,7 +157,7 @@ CREATE TABLE public.reservations (
 );
 
 
-ALTER TABLE public.reservations OWNER TO luxe_user;
+ALTER TABLE public.reservations  OWNER TO postgres;
 
 --
 -- Name: room_amenities; Type: TABLE; Schema: public; Owner: luxe_user
@@ -171,7 +170,7 @@ CREATE TABLE public.room_amenities (
 );
 
 
-ALTER TABLE public.room_amenities OWNER TO luxe_user;
+ALTER TABLE public.room_amenities  OWNER TO postgres;
 
 --
 -- Name: room_amenity_map; Type: TABLE; Schema: public; Owner: luxe_user
@@ -183,7 +182,7 @@ CREATE TABLE public.room_amenity_map (
 );
 
 
-ALTER TABLE public.room_amenity_map OWNER TO luxe_user;
+ALTER TABLE public.room_amenity_map  OWNER TO postgres;
 
 --
 -- Name: rooms; Type: TABLE; Schema: public; Owner: luxe_user
@@ -213,7 +212,7 @@ CREATE TABLE public.rooms (
 );
 
 
-ALTER TABLE public.rooms OWNER TO luxe_user;
+ALTER TABLE public.rooms  OWNER TO postgres;
 
 --
 -- Name: users; Type: TABLE; Schema: public; Owner: luxe_user
@@ -229,7 +228,7 @@ CREATE TABLE public.users (
 );
 
 
-ALTER TABLE public.users OWNER TO luxe_user;
+ALTER TABLE public.users  OWNER TO postgres;
 
 --
 -- Data for Name: alembic_version; Type: TABLE DATA; Schema: public; Owner: luxe_user
